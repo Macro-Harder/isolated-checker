@@ -218,7 +218,15 @@ class IntakeFreezeTests(unittest.TestCase):
         )
         second = harness.run_intake_freeze(invocation, out2)
         self.assertIsNotNone(second)
-        self.assertIn(
+        # Re-expected under Step 14 finding T14-10, citation digest
+        # limb: the digest filed for the new intake is the issued
+        # receipt's own self digest, the value this freeze returns.
+        # The earlier expectation, that the invocation supplied
+        # receipt digest stands in the filed text, is the contrary
+        # expectation that finding names, a presented digest filed
+        # as a record identity.
+        self.assertIn(second, harness.combined_text(out2))
+        self.assertNotIn(
             harness._digest("receipt:second"),
             harness.combined_text(out2),
         )

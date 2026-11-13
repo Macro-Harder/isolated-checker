@@ -13,8 +13,11 @@ convention presents it, with the invocation receipt_digest field
 set to a value differing from the issued self digest.
 """
 
+import pathlib
+import tempfile
 import unittest
 
+import harness
 from isolated_checker import discovery
 
 
@@ -102,6 +105,57 @@ class T1407DiscoveryComposesNoDeterminationTests(unittest.TestCase):
         self.assertNotIn("composes statuses from it", doc)
         module_doc = discovery.__doc__ or ""
         self.assertNotIn("composes statuses from it", module_doc)
+
+
+SUPPLIED_DIGEST = "f" * 64
+
+
+class T1410NoPresentedDigestFiledAsIdentityTests(unittest.TestCase):
+    """T14-10, citation digest limb: no presented digest filed as identity."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.out = pathlib.Path(self.tmp.name) / "out"
+
+    def freeze_with_supplied_digest(self):
+        invocation = harness.base_invocation(
+            self.out, receipt_digest=SUPPLIED_DIGEST
+        )
+        return harness.run_intake_freeze(invocation, self.out)
+
+    def test_supplied_digest_differing_from_self_digest_is_filed_nowhere(self):
+        result = self.freeze_with_supplied_digest()
+        self.assertIsNotNone(result)
+        self.assertNotEqual(result, SUPPLIED_DIGEST)
+        # No filed artefact of the freeze names the supplied
+        # value at all: no text names a presented form for a
+        # freeze receipt digest, so it stands not at all, in the
+        # anchor text and in every other filed text alike.
+        self.assertNotIn(SUPPLIED_DIGEST, harness.combined_text(self.out))
+
+    def test_anchor_text_names_the_issued_self_digest_as_receipt_digest(self):
+        result = self.freeze_with_supplied_digest()
+        self.assertIsNotNone(result)
+        anchor = harness.signature_text(self.out, "anchor record")
+        named = {}
+        for line in anchor.splitlines():
+            name, _, value = line.partition(":")
+            named[name.strip()] = value.strip()
+        self.assertEqual(named["anchor entry"], result)
+        self.assertEqual(named["receipt digest"], result)
+
+    def test_anchor_receipt_digest_is_the_custody_receipt_self_digest(self):
+        result = self.freeze_with_supplied_digest()
+        self.assertIsNotNone(result)
+        receipt_text = harness.signature_text(self.out, "custody receipt")
+        self_digest = None
+        for line in receipt_text.splitlines():
+            if line.startswith("receipt self digest:"):
+                self_digest = line.partition(":")[2].strip()
+        self.assertEqual(self_digest, result)
+        anchor = harness.signature_text(self.out, "anchor record")
+        self.assertIn("receipt digest: " + self_digest, anchor)
 
 
 if __name__ == "__main__":

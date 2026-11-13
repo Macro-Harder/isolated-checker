@@ -111,12 +111,22 @@ def _second_pass(members, invocation):
     return second
 
 
-def _anchor_filed_text(result, citation_digest):
-    """Render the anchor record entry, in its qualified form."""
+def _anchor_filed_text(result):
+    """Render the anchor record entry, in its qualified form.
+
+    Every digest this text names as a receipt digest is the
+    issued receipt's own self digest, from the freeze result.
+    A receipt digest presented on an invocation is no part of a
+    freeze: CT-01 names no such read, a freeze produces the
+    receipt digest rather than receiving it, and no governing
+    text names a presented form for it at the filing surface,
+    so a presented value stands in this text not at all, and
+    never beside the self digest in the same identity position.
+    """
     lines = [
         "anchor record",
         "anchor entry: " + result["receipt_digest"],
-        "receipt digest: " + str(citation_digest),
+        "receipt digest: " + str(result["receipt_digest"]),
         "anchor strength: the anchoring record "
         + freeze_core.ANCHOR_QUALIFIED_FORM
         + "; custody wording is bounded at transcription strength",
@@ -248,7 +258,6 @@ def run_intake_freeze(invocation, output_area):
             encoding="utf-8",
         )
         return None
-    citation_digest = invocation.get("receipt_digest") or result["receipt_digest"]
     # An anchor entry standing with a different value for this
     # receipt digest is never overwritten: the attempt stops as a
     # freeze that cannot complete, before any receipt stands.
@@ -294,6 +303,6 @@ def run_intake_freeze(invocation, output_area):
     # value is a completed write and is not written again.
     if not anchor_path.exists():
         anchor_path.write_text(
-            _anchor_filed_text(result, citation_digest), encoding="utf-8"
+            _anchor_filed_text(result), encoding="utf-8"
         )
     return result["receipt_digest"]
