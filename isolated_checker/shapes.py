@@ -115,6 +115,13 @@ VOCABULARY = {
     ),
     "SH-38-amendment": (
         "corrected_entry_citation",
+        "checker_version",
+        "time_became_current",
+        "packet_form_versions_judged",
+        "calibration_fixture_suite_version",
+        "calibration_result",
+        "declaration_state",
+        "events",
     ),
     "SH-44": (
         "digest_algorithm",

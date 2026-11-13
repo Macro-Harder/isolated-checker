@@ -11,6 +11,7 @@ form its brief passage states and no wider form.
 
 from .calibration import calibration_passes
 from .shapes import ShapeError
+from .version_history import corrected_entries
 
 
 def layout_input_form(invocation):
@@ -80,4 +81,50 @@ def calibration_state_form(
     return {
         "calibration_state": state,
         "calibration_record_digest": digest_fn(latest_record),
+    }
+
+
+def version_determination_form(records, at_time=None, version=None):
+    """IF-VER: the current version determination from entries.
+
+    Inputs are version history entries in the SH-38 entry form,
+    with corrections applied as brief section 8.1 states: an entry
+    is read as corrected by its latest amendment. The return is
+    the current version determination for a build at a moment,
+    the declaration state the entry carries, and the entry the
+    determination was read from, as brief section 5.9 names that
+    determination as a gating input. Times compare as the written
+    time texts they are, in the FM-06 form.
+    """
+    entries = corrected_entries(records)
+    if not entries:
+        raise ShapeError("IF-VER was given no version history entry")
+    standing = [
+        entry
+        for entry in entries
+        if at_time is None or entry["time_became_current"] <= at_time
+    ]
+    if not standing:
+        raise ShapeError(
+            "IF-VER has no entry standing at the moment named"
+        )
+    current = max(standing, key=lambda entry: entry["time_became_current"])
+    if version is None:
+        chosen = current
+    else:
+        chosen = next(
+            (entry for entry in entries if entry["checker_version"] == version),
+            None,
+        )
+        if chosen is None:
+            raise ShapeError(
+                "IF-VER has no entry for the version named: " + str(version)
+            )
+    is_current = chosen["checker_version"] == current["checker_version"]
+    return {
+        "version": chosen["checker_version"],
+        "determination": "current" if is_current else "not current",
+        "is_current": is_current,
+        "declaration_state": chosen["declaration_state"],
+        "entry": chosen,
     }
