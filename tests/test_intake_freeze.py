@@ -142,8 +142,20 @@ class IntakeFreezeTests(unittest.TestCase):
         self.assertEqual(len(receipts), 1)
 
     def test_receipt_names_every_member_by_digest_and_byte_size(self):
+        # Re-expected under Step 14 finding T14-05: a member
+        # presented by digest and byte size only, with no bytes,
+        # is never frozen on the presented digest, so this pin
+        # now presents the same members by their bytes, in the
+        # real content form, and the receipt names them by the
+        # digests recomputed from those bytes, which are the
+        # member_entries digests below.
         self.freeze(
-            scenario={"presented_receipt": member_entries()}
+            scenario={
+                "presented_members": [
+                    {"name": name, "content": MEMBER_TEXTS[name]}
+                    for name in sorted(MEMBER_TEXTS)
+                ]
+            }
         )
         receipt = harness.signature_text(self.out, "custody receipt")
         for entry in member_entries():

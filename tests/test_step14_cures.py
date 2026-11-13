@@ -178,5 +178,81 @@ class T1404PinningAndVersionsReadTests(unittest.TestCase):
         )
 
 
+class T1405NoReceiptOverUnrecomputedDigestsTests(unittest.TestCase):
+    """T14-05: no receipt over member digests never recomputed."""
+
+    def digest_only_members(self):
+        return [
+            {
+                "name": "ghost.txt",
+                "digest_git_blob_sha1": "0" * 40,
+                "byte_size": 999,
+                "source_kind": "handed in material",
+            }
+        ]
+
+    def test_core_digest_only_presentation_in_both_passes_issues_no_receipt(self):
+        result = core_freeze()
+        # core_freeze freezes real members; rebuild the call here
+        # on digest only members in both passes.
+        from isolated_checker import freeze
+
+        call = {
+            "build": "cure-build",
+            "stage": "cure-stage",
+            "packet_form_version": "packet-form-1",
+            "checker_version": "checker-1.0.0",
+            "freeze_time": "2026-11-13T00:00:00Z",
+            "pinning_record": {
+                "digest_algorithm": "SHA-256",
+                "canonical_form": "CFE-1",
+                "checker_version": "checker-1.0.0",
+                "successor_ruling_reference": None,
+            },
+        }
+        result = freeze.freeze_intake(
+            self.digest_only_members(),
+            self.digest_only_members(),
+            **call,
+        )
+        self.assertEqual(result["status"], "intake failure")
+        self.assertNotIn("receipt", result)
+
+    def test_shell_presented_receipt_scenario_issues_no_receipt(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        out = pathlib.Path(tmp.name) / "out"
+        entries = [
+            {
+                "name": "notes.txt",
+                "digest_git_blob_sha1": harness._blob_digest(
+                    b"The notes artefact body.\n"
+                ),
+                "byte_size": len(b"The notes artefact body.\n"),
+            }
+        ]
+        invocation = harness.base_invocation(
+            out, scenario={"presented_receipt": entries}
+        )
+        result = harness.run_intake_freeze(invocation, out)
+        self.assertIsNone(result)
+        self.assertIn("intake failure", harness.combined_text(out))
+        self.assertIsNone(
+            harness.artefact_with_signature(out, "custody receipt")
+        )
+
+    def test_real_content_member_still_freezes_on_its_recomputed_digest(self):
+        result = core_freeze()
+        self.assertEqual(result["status"], "frozen")
+        digests = {
+            entry["member_digest"] for entry in result["receipt"]["members"]
+        }
+        expected = {
+            harness._blob_digest(b"alpha bytes\n"),
+            harness._blob_digest(b"beta bytes\n"),
+        }
+        self.assertEqual(digests, expected)
+
+
 if __name__ == "__main__":
     unittest.main()

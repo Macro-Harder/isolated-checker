@@ -55,9 +55,14 @@ HANDING_SEAT = "producer seat"
 def _pass_readings(members, counter):
     """Read one full pass of handed in material, data only.
 
-    A member may carry its bytes as content, or, where the set is
-    presented by its receipt entries, its digest and byte size in
-    the owned forms. An unreadable member, and an uncovered member
+    Every member's digest is recomputed from its bytes through
+    the reading layer, on both passes, as MD-03, brief section
+    5.4, and XR-03 state: freeze intake receives member byte
+    strings, and no presented digest is ever carried into a
+    reading as a substitute for recomputation. A member presented
+    without bytes, by digest and byte size only, cannot be
+    frozen: its bytes cannot be had, so it takes the intake
+    failure form. An unreadable member, and an uncovered member
     form the reading layer will not read, cannot be frozen.
     """
     readings = []
@@ -71,17 +76,16 @@ def _pass_readings(members, counter):
                 }
             )
             continue
-        if "content" not in member and "digest_git_blob_sha1" in member:
-            if counter is not None:
-                counter.note_member(int(member["byte_size"]))
+        if member.get("content") is None:
             readings.append(
                 {
-                    "name": str(member["name"]),
-                    "cannot_be_frozen": False,
-                    "digest_git_blob_sha1": member["digest_git_blob_sha1"],
-                    "byte_size": int(member["byte_size"]),
-                    "source_kind": member.get("source_kind", "handed in material"),
-                    "content": None,
+                    "name": str(member.get("name", "unnamed material")),
+                    "cannot_be_frozen": True,
+                    "failure": (
+                        "member bytes cannot be had: the member was "
+                        "presented by digest and byte size only, with "
+                        "no bytes to recompute from"
+                    ),
                 }
             )
             continue
