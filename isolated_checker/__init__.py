@@ -67,6 +67,12 @@ from .run_statement import (
     run_statement,
     run_statement_filed_text,
 )
+from .freeze import (
+    ANCHOR_QUALIFIED_FORM,
+    freeze_intake,
+    intake_failure_filed_text,
+)
+from .intake import run_intake_freeze
 from .discovery import (
     DISCOVERY_ROUTES,
     can_recompute,
@@ -88,7 +94,11 @@ from .reading import (
 from .shapes import ShapeError
 
 __all__ = [
+    "ANCHOR_QUALIFIED_FORM",
     "DISCOVERY_ROUTES",
+    "freeze_intake",
+    "intake_failure_filed_text",
+    "run_intake_freeze",
     "OWNED_FIELDS",
     "can_recompute",
     "classify_discovery",
