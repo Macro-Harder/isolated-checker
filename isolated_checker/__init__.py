@@ -67,10 +67,32 @@ from .run_statement import (
     run_statement,
     run_statement_filed_text,
 )
+from .reading import (
+    OWNED_FIELDS,
+    ReadingCounter,
+    extract_link_fields,
+    extract_owned_fields,
+    looks_instruction_shaped,
+    member_form,
+    parse_record_fields,
+    read_member,
+    read_members,
+    treat_as_data,
+)
 from .shapes import ShapeError
 
 __all__ = [
+    "OWNED_FIELDS",
+    "ReadingCounter",
     "ShapeError",
+    "extract_link_fields",
+    "extract_owned_fields",
+    "looks_instruction_shaped",
+    "member_form",
+    "parse_record_fields",
+    "read_member",
+    "read_members",
+    "treat_as_data",
     "addendum",
     "calibration_citation_digest",
     "context_claim_matches",
