@@ -110,6 +110,7 @@ from .reading import (
 )
 from .authenticity import check_authenticity
 from .chain import check_chain
+from .completeness import check_completeness
 from .checks import (
     CHECKS,
     classification_record,
@@ -121,6 +122,7 @@ from .checks import (
     layout_source_for,
     outside_source_reference,
     read_frozen_members,
+    run_all_checks,
     spawn_reference,
     spawn_strength,
 )
@@ -129,6 +131,8 @@ from .shapes import ShapeError
 __all__ = [
     "check_authenticity",
     "check_chain",
+    "check_completeness",
+    "run_all_checks",
     "CHECKS",
     "classification_record",
     "classify_one_sided",

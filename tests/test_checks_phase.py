@@ -701,5 +701,187 @@ class ChainTests(unittest.TestCase):
         self.assertIn("orphan-item", result["unchecked_elements"])
 
 
+class CompletenessTests(unittest.TestCase):
+    def run_comp(self, members=MEMBERS, **kwargs):
+        from isolated_checker import completeness
+
+        kwargs.setdefault("layout", build_layout())
+        kwargs.setdefault(
+            "required_elements",
+            [
+                {"name": "links.txt", "governing_element_reference": "layout links"},
+                {"name": "notes.txt", "governing_element_reference": "layout notes"},
+                {
+                    "name": "step-record.txt",
+                    "governing_element_reference": "layout step record",
+                },
+            ],
+        )
+        return completeness.check_completeness(member_list(members), **kwargs)
+
+    def test_complete_set_passes(self):
+        result = self.run_comp()
+        self.assertEqual(result["verdict"], "pass")
+        self.assertEqual(result["discrepancy_entries"], [])
+
+    def test_stated_none_counts_as_present(self):
+        reduced = {n: c for n, c in MEMBERS.items() if n != "step-record.txt"}
+        result = self.run_comp(
+            members=reduced,
+            required_elements=[
+                {"name": "links.txt", "governing_element_reference": "layout links"},
+                {
+                    "name": "step-record.txt",
+                    "governing_element_reference": "layout step record",
+                    "stated_none": True,
+                },
+            ],
+        )
+        self.assertEqual(result["verdict"], "pass")
+        self.assertIn("step-record.txt", result["counted_present"])
+
+    def test_missing_required_artefact_fails_completeness(self):
+        reduced = {n: c for n, c in MEMBERS.items() if n != "step-record.txt"}
+        result = self.run_comp(members=reduced)
+        self.assertEqual(result["verdict"], "fail")
+        entry = result["discrepancy_entries"][0]
+        self.assertEqual(entry["check"], "completeness")
+        self.assertEqual(entry["discrepancy_form_name"], "missing artefact")
+        self.assertNotEqual(entry["discrepancy_category"], "custody gap")
+
+    def test_no_denominator_outside_the_bundle_supported(self):
+        result = self.run_comp(
+            denominator_outside_bundle=False, determination_supported=True
+        )
+        self.assertEqual(result["verdict"], "cannot run")
+        self.assertEqual(result["outcome_word"], "FAIL with stage PARTIAL")
+
+    def test_no_denominator_outside_the_bundle_unsupported(self):
+        result = self.run_comp(
+            denominator_outside_bundle=False, determination_supported=False
+        )
+        self.assertEqual(result["verdict"], "cannot run")
+        self.assertEqual(result["outcome_word"], "UNVERIFIABLE")
+
+    def test_no_layout_means_no_denominator(self):
+        result = self.run_comp(layout=None)
+        self.assertEqual(result["verdict"], "cannot run")
+
+    def test_empty_denominator_for_a_stage_with_steps_cannot_run(self):
+        result = self.run_comp(required_elements=[], has_steps=True)
+        self.assertEqual(result["verdict"], "cannot run")
+        self.assertIn("empty", result["cannot_run_reason"])
+
+    def test_missing_content_property_fails(self):
+        result = self.run_comp(
+            required_elements=[
+                {
+                    "name": "notes.txt",
+                    "governing_element_reference": "layout notes",
+                    "content_properties": ["artefact body", "signature block"],
+                }
+            ]
+        )
+        self.assertEqual(result["verdict"], "fail")
+        self.assertEqual(
+            result["discrepancy_entries"][0]["discrepancy_form_name"],
+            "artefact content property missing",
+        )
+
+    def test_truncation_against_the_content_trace_fails(self):
+        result = self.run_comp(
+            required_elements=[
+                {
+                    "name": "notes.txt",
+                    "governing_element_reference": "layout notes",
+                    "missing_sections": ["C"],
+                    "disposition": "content_trace",
+                }
+            ]
+        )
+        self.assertEqual(result["verdict"], "fail")
+        entry = result["discrepancy_entries"][0]
+        self.assertEqual(entry["discrepancy_form_name"], "truncation")
+        self.assertIn("content trace", " ".join(result["notes"]))
+
+    def test_truncation_adjudicated_to_stand_is_a_recorded_gap(self):
+        result = self.run_comp(
+            required_elements=[
+                {
+                    "name": "notes.txt",
+                    "governing_element_reference": "layout notes",
+                    "missing_sections": ["C"],
+                    "disposition": "recorded_gap",
+                }
+            ]
+        )
+        self.assertEqual(result["verdict"], "pass")
+        self.assertEqual(result["recorded_gap_elements"], ["notes.txt"])
+
+
+class RunAllChecksTests(unittest.TestCase):
+    def test_all_three_checks_run_in_r80_order_and_pass_clean(self):
+        result = checks.run_all_checks(
+            member_list(),
+            links=[
+                {
+                    "link": "Link 1",
+                    "artefact": "notes.txt",
+                    "recorded_digest": canonical.git_blob_digest(
+                        MEMBERS["notes.txt"].encode("utf-8")
+                    ),
+                    "spawn": "spawn-alpha-001",
+                    "seat": "Seat Alpha",
+                    "source_kind": "platform sourced record",
+                }
+            ],
+            roster={"Seat Alpha": ["spawn-alpha-001"]},
+            layout=build_layout(),
+            required_elements=[
+                {"name": "links.txt", "governing_element_reference": "layout links"},
+                {"name": "notes.txt", "governing_element_reference": "layout notes"},
+                {
+                    "name": "step-record.txt",
+                    "governing_element_reference": "layout step record",
+                },
+            ],
+        )
+        self.assertEqual(
+            [r["check"] for r in result["checks"]],
+            ["authenticity", "chain", "completeness"],
+        )
+        self.assertEqual(
+            [r["verdict"] for r in result["checks"]], ["pass", "pass", "pass"]
+        )
+
+    def test_collision_twins_fail_the_combined_run(self):
+        receipt = build_receipt()
+        result = checks.run_all_checks(
+            member_list(),
+            receipt_members=receipt["members"],
+            layout=build_layout(),
+            required_elements=[
+                {"name": "links.txt", "governing_element_reference": "layout links"}
+            ],
+        )
+        # The receipt above is built over distinct members, so no
+        # twin stands in it; a receipt over twin members follows.
+        self.assertEqual(result["collision_entries"], [])
+        twin_receipt_members = [
+            {"member_digest": "a" * 40, "member_byte_size": 5},
+            {"member_digest": "a" * 40, "member_byte_size": 5},
+        ]
+        result = checks.run_all_checks(
+            member_list(),
+            receipt_members=twin_receipt_members,
+            layout=build_layout(),
+            required_elements=[
+                {"name": "links.txt", "governing_element_reference": "layout links"}
+            ],
+        )
+        self.assertEqual(len(result["collision_entries"]), 2)
+        self.assertEqual(result["checks"][0]["verdict"], "fail")
+
+
 if __name__ == "__main__":
     unittest.main()
