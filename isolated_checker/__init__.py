@@ -108,6 +108,13 @@ from .reading import (
     read_members,
     treat_as_data,
 )
+from .addendum_handling import (
+    addendum_handling_filed_text,
+    filer_test_results,
+    follow_addendum_chain,
+    handle_addenda,
+    validate_addendum,
+)
 from .authenticity import check_authenticity
 from .chain import check_chain
 from .completeness import check_completeness
@@ -129,6 +136,11 @@ from .checks import (
 from .shapes import ShapeError
 
 __all__ = [
+    "addendum_handling_filed_text",
+    "filer_test_results",
+    "follow_addendum_chain",
+    "handle_addenda",
+    "validate_addendum",
     "check_authenticity",
     "check_chain",
     "check_completeness",
