@@ -454,45 +454,45 @@ def classify_one_sided(items, carried_unexplained_count=0):
 
 def invocation_comparisons(
     invocation_layout_digest,
-    invocation_layout_version,
     layout_read_digest,
+    invocation_layout_version,
     layout_read_version,
-    invocation_build,
-    invocation_stage,
-    receipt_build,
-    receipt_stage,
-    context_packet_form_version,
     invocation_packet_form_version,
+    context_packet_form_version,
     layout_as_used_digest,
     layout_as_used_version,
     run_checker_version,
     invocation_checker_version,
-    determination_supported,
-    remaining_support,
 ):
     """The invocation to record comparisons of brief section 5.6.
 
     A run compares, before any check verdict is formed: the
     invocation layout digest and version against the layout read;
-    the invocation build and stage against the receipt build and
-    stage; the packet form version in the frozen set context record
+    the packet form version in the frozen set context record
     against the invocation packet form version; and the layout
     identity and version as used and the checker version as carried
     in the run statement against the invocation values for them.
-    Each mismatch takes the custody gap outcome where the
-    comparison itself supports that determination, and otherwise
-    the outcome for a check that cannot run: FAIL with stage
-    PARTIAL where the remaining records support a determination and
-    UNVERIFIABLE where they support none. No verdict issues where
-    any of these comparisons does not match the invocation; the
-    composition of that bar into a run outcome belongs to the
-    operation modules, and this function returns the failures.
+    This function returns the comparisons in MD-05's own terms:
+    each mismatch stands as the compared field and its two values,
+    the invocation value and the value read, and nothing more. It
+    attaches no run outcome word and takes no support standing:
+    the custody gap as a run outcome, FAIL with stage PARTIAL, and
+    UNVERIFIABLE compose only where MD-06 and MD-15 own them, in
+    the operation modules, at slice S-07, as Step 14 finding
+    T14-17 cures it. No verdict issues where any of these
+    comparisons does not match the invocation; the composition of
+    that bar into a run outcome belongs to the operation modules,
+    and this function returns the failures.
+
+    The build and stage comparison of brief section 5.6 stands in
+    one home only: the seal comparison set of XR-01 at MD-04,
+    under the seal's COMPARISON_BUILD_STAGE, which takes the
+    custody gap entry there. It is not restated here, so one
+    mismatch keeps one outcome source.
     """
     pairs = [
         ("layout digest comparison", invocation_layout_digest, layout_read_digest),
         ("layout version comparison", invocation_layout_version, layout_read_version),
-        ("receipt build comparison", invocation_build, receipt_build),
-        ("receipt stage comparison", invocation_stage, receipt_stage),
         (
             "packet form version comparison",
             invocation_packet_form_version,
@@ -502,12 +502,6 @@ def invocation_comparisons(
         ("layout version as used comparison", invocation_layout_version, layout_as_used_version),
         ("checker version comparison", invocation_checker_version, run_checker_version),
     ]
-    if determination_supported:
-        outcome = OUTCOME_CUSTODY_GAP
-    elif remaining_support:
-        outcome = OUTCOME_PARTIAL
-    else:
-        outcome = OUTCOME_UNVERIFIABLE
     failures = []
     for comparison, invoked, read in pairs:
         if invoked != read:
@@ -516,8 +510,6 @@ def invocation_comparisons(
                     "comparison": comparison,
                     "invocation_value": invoked,
                     "read_value": read,
-                    "outcome_word": outcome,
-                    "determination_supported": determination_supported,
                 }
             )
     return failures

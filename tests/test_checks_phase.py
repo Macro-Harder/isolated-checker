@@ -275,6 +275,17 @@ class OneSidedClassificationTests(unittest.TestCase):
         self.assertEqual(result["unchecked_elements"], ["item-1"])
 
 
+# The four outcome tests in this class are re-expected under
+# Step 14 finding T14-17 as cure consequences: the expectations
+# they pinned, run outcome words attached by this MD-05 function,
+# are the behaviour the finding condemns. Each test keeps its
+# name, its setup, and its presented mismatch; its expectation is
+# restated on the governing text: the function returns the
+# compared fields and their standings only, outcome words
+# composing where MD-06 and MD-15 own them, and the build and
+# stage comparison stands in one home only, the seal's.
+
+
 class InvocationComparisonTests(unittest.TestCase):
     def compare(self, **overrides):
         values = {
@@ -282,18 +293,12 @@ class InvocationComparisonTests(unittest.TestCase):
             "invocation_layout_version": "layout-1",
             "layout_read_digest": "L1",
             "layout_read_version": "layout-1",
-            "invocation_build": "isolated-checker-test-build",
-            "invocation_stage": "step-gate-1",
-            "receipt_build": "isolated-checker-test-build",
-            "receipt_stage": "step-gate-1",
             "context_packet_form_version": "packet-form-1",
             "invocation_packet_form_version": "packet-form-1",
             "layout_as_used_digest": "L1",
             "layout_as_used_version": "layout-1",
             "run_checker_version": "checker-1.0.0",
             "invocation_checker_version": "checker-1.0.0",
-            "determination_supported": True,
-            "remaining_support": False,
         }
         values.update(overrides)
         return checks.invocation_comparisons(**values)
@@ -305,27 +310,38 @@ class InvocationComparisonTests(unittest.TestCase):
         failures = self.compare(layout_read_digest="L2")
         self.assertEqual(len(failures), 1)
         self.assertEqual(failures[0]["comparison"], "layout digest comparison")
-        self.assertEqual(failures[0]["outcome_word"], "custody gap")
+        self.assertEqual(failures[0]["invocation_value"], "L1")
+        self.assertEqual(failures[0]["read_value"], "L2")
+        self.assertNotIn("outcome_word", failures[0])
+        self.assertEqual(
+            set(failures[0]), {"comparison", "invocation_value", "read_value"}
+        )
 
     def test_build_mismatch_supported_takes_custody_gap(self):
-        failures = self.compare(receipt_build="other-build")
-        self.assertEqual(failures[0]["outcome_word"], "custody gap")
+        from isolated_checker import seal
+
+        self.assertEqual(self.compare(), [])
+        self.assertEqual(
+            seal.COMPARISON_BUILD_STAGE, "receipt build and stage comparison"
+        )
 
     def test_packet_form_mismatch_unsupported_takes_unverifiable(self):
-        failures = self.compare(
-            context_packet_form_version="packet-form-2",
-            determination_supported=False,
-            remaining_support=False,
+        failures = self.compare(context_packet_form_version="packet-form-2")
+        self.assertEqual(len(failures), 1)
+        self.assertEqual(
+            failures[0]["comparison"], "packet form version comparison"
         )
-        self.assertEqual(failures[0]["outcome_word"], "UNVERIFIABLE")
+        self.assertEqual(failures[0]["invocation_value"], "packet-form-1")
+        self.assertEqual(failures[0]["read_value"], "packet-form-2")
+        self.assertNotIn("outcome_word", failures[0])
 
     def test_checker_version_mismatch_unsupported_with_support_takes_partial(self):
-        failures = self.compare(
-            run_checker_version="checker-9.9.9",
-            determination_supported=False,
-            remaining_support=True,
-        )
-        self.assertEqual(failures[0]["outcome_word"], "FAIL with stage PARTIAL")
+        failures = self.compare(run_checker_version="checker-9.9.9")
+        self.assertEqual(len(failures), 1)
+        self.assertEqual(failures[0]["comparison"], "checker version comparison")
+        self.assertEqual(failures[0]["invocation_value"], "checker-1.0.0")
+        self.assertEqual(failures[0]["read_value"], "checker-9.9.9")
+        self.assertNotIn("outcome_word", failures[0])
 
 
 class AuthenticityTests(unittest.TestCase):
