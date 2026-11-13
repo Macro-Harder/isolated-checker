@@ -7,7 +7,20 @@ renderers, interface forms, and the canonical encoding module as
 they land, family by family.
 """
 
-from .interfaces import layout_input_form
+from .addenda import addendum, addendum_filed_text
+from .calibration import (
+    calibration_filed_text,
+    calibration_passes,
+    calibration_record,
+    fixture_result,
+)
+from .interfaces import calibration_state_form, layout_input_form
+from .quarantine import (
+    failure_filed_text,
+    failure_record,
+    quarantine_filed_text,
+    quarantine_record,
+)
 from .receipts import (
     context_filed_text,
     context_record,
@@ -24,6 +37,17 @@ from .shapes import ShapeError
 
 __all__ = [
     "ShapeError",
+    "addendum",
+    "addendum_filed_text",
+    "calibration_filed_text",
+    "calibration_passes",
+    "calibration_record",
+    "calibration_state_form",
+    "failure_filed_text",
+    "failure_record",
+    "fixture_result",
+    "quarantine_filed_text",
+    "quarantine_record",
     "bound_values_record",
     "layout_input_form",
     "run_statement",
