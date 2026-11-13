@@ -74,6 +74,15 @@ from .freeze import (
     freeze_intake,
     intake_failure_filed_text,
 )
+from .seal import (
+    SEAL_OPERATIONS,
+    check_seal,
+    custody_gap_entry,
+    fixity_mismatch_record,
+    intake_order_item,
+    seal_break_filed_text,
+    seal_break_report,
+)
 from .intake import run_intake_freeze
 from .store import (
     PRODUCTION_FAILURE_FORM,
@@ -108,6 +117,13 @@ __all__ = [
     "PRODUCTION_FAILURE_FORM",
     "freeze_intake",
     "intake_failure_filed_text",
+    "SEAL_OPERATIONS",
+    "check_seal",
+    "custody_gap_entry",
+    "fixity_mismatch_record",
+    "intake_order_item",
+    "seal_break_filed_text",
+    "seal_break_report",
     "produce_held_set",
     "produced_set_filed_text",
     "run_intake_freeze",

@@ -44,6 +44,43 @@ VOCABULARY = {
     "SH-07": (
         "anchored_receipt_digest",
     ),
+    "SH-08": (
+        "sequence_position",
+        "receipt_digest",
+    ),
+    "SH-13": (
+        "custody_receipt_digest",
+        "authenticity_verdict",
+        "chain_verdict",
+        "completeness_verdict",
+        "discrepancy_list",
+        "binding_fields",
+        "unchecked_elements",
+        "recorded_gap_elements",
+        "resource_counts",
+        "calibration_state",
+        "honest_limits_fields",
+    ),
+    "SH-14": (
+        "entry_number",
+        "check",
+        "discrepancy_category",
+        "discrepancy_form_name",
+        "defect_kind_code",
+        "subject_identification",
+        "root_cause_key",
+        "governing_element_reference",
+        "quoted_found_value",
+        "one_sided_classification_heading",
+        "pending_counterpart_record_reference",
+        "routes_tried",
+    ),
+    "SH-37": (
+        "checked_set_receipt_digest",
+        "result_word",
+        "store_discrepancy",
+        "rotation_cursor",
+    ),
     "SH-33": (
         "material_identity_best_available",
         "handing_over_seat",
@@ -142,6 +179,17 @@ VOCABULARY = {
 }
 
 MEMBER_FIELDS = ("member_digest", "member_byte_size", "source_kind")
+SUBJECT_IDENTIFICATION_FIELDS = (
+    "identification_form",
+    "digest",
+    "receipt_position",
+)
+STORE_DISCREPANCY_FIELDS = (
+    "receipt_digest",
+    "member_identification",
+    "digest_expected",
+    "digest_found",
+)
 SOURCE_FIELDS = ("source_kind", "source_identity")
 RULE_VERSION_FIELDS = ("rule_name", "rule_version")
 STANDARD_VERSION_FIELDS = ("standard_name", "standard_version")
