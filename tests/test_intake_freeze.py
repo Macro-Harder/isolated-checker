@@ -179,12 +179,21 @@ class IntakeFreezeTests(unittest.TestCase):
         self.assertIn("detects accident and casual rewriting", text)
         self.assertIn("not a determined editor", text)
 
-    def test_gate_record_intake_order_field_is_written_as_each_intake_freezes(self):
-        self.freeze(scenario={"freeze": {"anchor_entry": True}})
-        gate = harness.signature_text(self.out, "gate record")
-        self.assertIn("intake order", gate)
-        self.assertIn("first", gate)
-        self.assertIn(harness._digest("receipt:base"), gate)
+    def test_freeze_writes_no_gate_record_and_authors_no_intake_order_field(self):
+        # Re-expected under Step 14 finding T14-03: SH-40 and Q8
+        # state the checker writes into the gate record in no case
+        # and beside it in no case, and SH-08 states the intake
+        # order field is the operator's field. The earlier
+        # expectation, that the freeze writes that field naming
+        # the invocation receipt digest, is the contrary
+        # expectation that finding names.
+        result = self.freeze(scenario={"freeze": {"anchor_entry": True}})
+        self.assertIsNotNone(result)
+        names = [path.name for path in harness.artefacts(self.out)]
+        self.assertNotIn("gate-record.txt", names)
+        self.assertIsNone(
+            harness.artefact_with_signature(self.out, "gate record")
+        )
 
     def test_late_member_is_a_new_intake_and_never_an_edit(self):
         first = self.freeze()

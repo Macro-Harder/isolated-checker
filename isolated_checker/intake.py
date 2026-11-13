@@ -33,6 +33,14 @@ mapping presents a change between the two passes, material that
 cannot be frozen, and the late member case. No parameter is ever
 taken from packet material; the invocation brief fields name the
 build, the stage, and the versions the freeze runs under.
+
+The gate record is an outside record the checker only reads, at
+SH-40: this shell writes into it in no case and beside it in no
+case, and it authors no gate record artefact. The intake order
+field at SH-08 is the operator's field, written by the operator
+as each intake for a gate freezes; where an operator filed gate
+record stands in the output area, this shell reads the anchor
+home naming from it and leaves the file exactly as it stands.
 """
 
 import pathlib
@@ -155,24 +163,26 @@ def _anchor_filed_text(result, citation_digest):
     return "\n".join(lines) + "\n"
 
 
-def _gate_record_filed_text(result, citation_digest):
-    """Render the gate record intake order field for this freeze.
+def _operator_gate_record_anchor_home(output_area):
+    """Read the anchor home naming from an operator filed gate record.
 
-    The intake order field is written as each intake for a gate
-    freezes, recording the position and the receipt digest the
-    seal phase later compares against.
+    A read path only, at SH-40 and CT-01: the gate record naming
+    the anchor home for the build is one of freeze intake's reads.
+    Returns the naming the operator's record states on its anchor
+    home line, and None where no operator gate record stands in
+    the output area or the record names no anchor home. The file
+    is never written by this shell.
     """
-    record = result["receipt"]
-    position = (
-        "first" if record["sequence_position"] == 1
-        else "position " + str(record["sequence_position"])
-    )
-    lines = [
-        "gate record",
-        "intake order: " + position + "; receipt digest " + str(citation_digest),
-        "receipt self digest: " + result["receipt_digest"],
-    ]
-    return "\n".join(lines) + "\n"
+    gate_path = pathlib.Path(output_area) / "gate-record.txt"
+    if not gate_path.exists():
+        return None
+    for line in gate_path.read_text(
+        encoding="utf-8", errors="replace"
+    ).splitlines():
+        name, _, value = line.partition(":")
+        if name.strip() == "anchor home":
+            return value.strip()
+    return None
 
 
 def run_intake_freeze(invocation, output_area):
@@ -182,13 +192,20 @@ def run_intake_freeze(invocation, output_area):
     None where the material takes the intake failure form, which
     takes no exit status. The artefacts stand in the output area:
     the frozen store copies, the context record, the custody
-    receipt, the gate record intake order field, and, written
-    last as the commit point, the anchor record entry. On failure
-    only the intake failure record stands, filed outside the
-    frozen set, and the staged copies are discarded.
+    receipt, and, written last as the commit point, the anchor
+    record entry. No gate record artefact stands among them: the
+    gate record is the operator's record, read where it stands
+    and never authored here. On failure only the intake failure
+    record stands, filed outside the frozen set, and the staged
+    copies are discarded.
     """
     out = pathlib.Path(output_area)
     out.mkdir(parents=True, exist_ok=True)
+    # CT-01 read: the gate record naming the anchor home, where an
+    # operator filed gate record stands in the output area. Read
+    # only; the record and its intake order field are the
+    # operator's, at SH-08 and SH-40.
+    _operator_gate_record_anchor_home(out)
     freeze_time = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     members = _presented_members(invocation)
     second = _second_pass(members, invocation)
@@ -259,9 +276,6 @@ def run_intake_freeze(invocation, output_area):
     )
     (out / "custody-receipt.txt").write_text(
         _receipt_filed_text(result), encoding="utf-8"
-    )
-    (out / "gate-record.txt").write_text(
-        _gate_record_filed_text(result, citation_digest), encoding="utf-8"
     )
     # Anchor write last: the commit point of the freeze. An anchor
     # entry already standing for this receipt digest with the same
