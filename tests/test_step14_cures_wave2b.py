@@ -458,5 +458,21 @@ class T1418SubjectlessReceiptTests(unittest.TestCase):
                 seal.custody_gap_entry(1, comparison, None, None, None)
 
 
+class T1420SealCounterTests(unittest.TestCase):
+    """T14-20: the counter pins the receipt recomputation note."""
+
+    def test_seal_run_counts_every_digest_computation(self):
+        counter = ReadingCounter()
+        result = run_seal(build_receipt(), counter=counter)
+        self.assertEqual(result["status"], "intact")
+        self.assertEqual(counter.members_read, len(MEMBERS))
+        self.assertEqual(counter.digest_computations, 4)
+
+    def test_the_fourth_computation_is_the_receipt_recomputation(self):
+        counter = ReadingCounter()
+        run_seal(build_receipt(), counter=counter)
+        self.assertEqual(counter.digest_computations, counter.members_read + 1)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -325,6 +325,13 @@ class SealEmissionFormTests(unittest.TestCase):
         result = run_seal(receipt, counter=counter)
         self.assertGreater(counter.bytes_read, 0)
         self.assertEqual(counter.members_read, len(MEMBERS))
+        # Strengthened under Step 14 finding T14-20: the digest
+        # computation count is pinned on this seal run, the three
+        # member recomputations and the receipt recomputation note
+        # the seal phase makes before resting any comparison on
+        # the receipt, four in all, so this test fails with that
+        # note removed.
+        self.assertEqual(counter.digest_computations, 4)
         self.assertIs(result["counter"], counter)
 
     def test_package_reexports_the_seal_phase(self):
