@@ -819,9 +819,17 @@ class CompletenessTests(unittest.TestCase):
         self.assertEqual(result["recorded_gap_elements"], ["notes.txt"])
 
 
+# The runner's home is re-pinned under Step 14 finding T14-16 as a
+# cure consequence: run_all_checks stands in checks_runner.py,
+# which depends on the shared machinery and on the three checks,
+# and checks.py imports none of its consumers. These tests call
+# the runner through the package surface, which re-exports it
+# from that home; their setups and expectations stand unchanged.
+
+
 class RunAllChecksTests(unittest.TestCase):
     def test_all_three_checks_run_in_r80_order_and_pass_clean(self):
-        result = checks.run_all_checks(
+        result = ic.run_all_checks(
             member_list(),
             links=[
                 {
@@ -856,7 +864,7 @@ class RunAllChecksTests(unittest.TestCase):
 
     def test_collision_twins_fail_the_combined_run(self):
         receipt = build_receipt()
-        result = checks.run_all_checks(
+        result = ic.run_all_checks(
             member_list(),
             receipt_members=receipt["members"],
             layout=build_layout(),
@@ -871,7 +879,7 @@ class RunAllChecksTests(unittest.TestCase):
             {"member_digest": "a" * 40, "member_byte_size": 5},
             {"member_digest": "a" * 40, "member_byte_size": 5},
         ]
-        result = checks.run_all_checks(
+        result = ic.run_all_checks(
             member_list(),
             receipt_members=twin_receipt_members,
             layout=build_layout(),

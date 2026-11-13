@@ -129,10 +129,10 @@ from .checks import (
     layout_source_for,
     outside_source_reference,
     read_frozen_members,
-    run_all_checks,
     spawn_reference,
     spawn_strength,
 )
+from .checks_runner import run_all_checks
 from .shapes import ShapeError
 
 __all__ = [
