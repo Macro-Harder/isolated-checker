@@ -328,5 +328,207 @@ class InvocationComparisonTests(unittest.TestCase):
         self.assertEqual(failures[0]["outcome_word"], "FAIL with stage PARTIAL")
 
 
+class AuthenticityTests(unittest.TestCase):
+    def run_auth(self, members=MEMBERS, **kwargs):
+        kwargs.setdefault(
+            "links",
+            [
+                {
+                    "link": "Link 1",
+                    "artefact": "notes.txt",
+                    "recorded_digest": canonical.git_blob_digest(
+                        MEMBERS["notes.txt"].encode("utf-8")
+                    ),
+                    "spawn": "spawn-alpha-001",
+                    "seat": "Seat Alpha",
+                    "source_kind": "platform sourced record",
+                }
+            ],
+        )
+        kwargs.setdefault("roster", {"Seat Alpha": ["spawn-alpha-001"]})
+        kwargs.setdefault("layout", build_layout())
+        from isolated_checker import authenticity
+
+        return authenticity.check_authenticity(member_list(members), **kwargs)
+
+    def test_clean_authenticity_passes_at_full_binding(self):
+        result = self.run_auth()
+        self.assertEqual(result["verdict"], "pass")
+        self.assertEqual(result["discrepancy_entries"], [])
+        self.assertEqual(result["strengths"]["Link 1"], "full spawn binding")
+
+    def test_link_digest_mismatch_fails_authenticity(self):
+        altered = dict(MEMBERS)
+        altered["notes.txt"] = "The notes artefact body, altered.\n"
+        result = self.run_auth(members=altered)
+        self.assertEqual(result["verdict"], "fail")
+        self.assertEqual(result["outcome_word"], "FAIL with stage PARTIAL")
+        entry = result["discrepancy_entries"][0]
+        self.assertEqual(entry["check"], "authenticity")
+        self.assertEqual(entry["discrepancy_form_name"], "digest mismatch")
+        self.assertEqual(
+            entry["subject_identification"]["digest"],
+            canonical.git_blob_digest(altered["notes.txt"].encode("utf-8")),
+        )
+
+    def test_presented_digest_is_never_trusted(self):
+        members = member_list()
+        for member in members:
+            if member["name"] == "notes.txt":
+                member["digest_git_blob_sha1"] = canonical.git_blob_digest(
+                    b"forged bytes"
+                )
+                member["content"] = "The notes artefact body, altered.\n"
+        from isolated_checker import authenticity
+
+        result = authenticity.check_authenticity(
+            members,
+            links=[
+                {
+                    "link": "Link 1",
+                    "artefact": "notes.txt",
+                    "recorded_digest": canonical.git_blob_digest(
+                        MEMBERS["notes.txt"].encode("utf-8")
+                    ),
+                }
+            ],
+            roster={"Seat Alpha": ["spawn-alpha-001"]},
+            layout=build_layout(),
+        )
+        self.assertEqual(result["verdict"], "fail")
+
+    def test_spawn_bound_to_an_unauthorised_seat_fails(self):
+        result = self.run_auth(
+            links=[
+                {
+                    "link": "Link 1",
+                    "artefact": "notes.txt",
+                    "recorded_digest": canonical.git_blob_digest(
+                        MEMBERS["notes.txt"].encode("utf-8")
+                    ),
+                    "spawn": "spawn-alpha-001",
+                    "seat": "Seat Gamma",
+                }
+            ]
+        )
+        self.assertEqual(result["verdict"], "fail")
+        entry = result["discrepancy_entries"][0]
+        self.assertEqual(
+            entry["discrepancy_form_name"],
+            "spawn identity does not resolve to an authorised seat",
+        )
+        self.assertEqual(entry["governing_element_reference"], "Link 1 spawn binding")
+
+    def test_no_roster_state_means_the_spawn_limb_cannot_run_supported(self):
+        result = self.run_auth(roster=None)
+        self.assertEqual(result["verdict"], "cannot run")
+        self.assertEqual(result["outcome_word"], "FAIL with stage PARTIAL")
+        self.assertIn(
+            "roster state for the step time", result["unchecked_elements"]
+        )
+
+    def test_no_roster_state_without_support_is_unverifiable(self):
+        result = self.run_auth(roster=None, determination_supported=False)
+        self.assertEqual(result["verdict"], "cannot run")
+        self.assertEqual(result["outcome_word"], "UNVERIFIABLE")
+
+    def test_unrecomputable_citation_is_unidentifiable_and_cannot_run(self):
+        result = self.run_auth(
+            links=[
+                {
+                    "link": "Link 1",
+                    "artefact": "notes.txt",
+                    "recorded_digest": None,
+                }
+            ]
+        )
+        self.assertEqual(result["verdict"], "cannot run")
+        entry = result["discrepancy_entries"][0]
+        self.assertEqual(
+            entry["subject_identification"]["identification_form"], "unidentifiable"
+        )
+
+    def test_missing_artefact_is_not_located_and_fails(self):
+        result = self.run_auth(
+            links=[
+                {
+                    "link": "Link 9",
+                    "artefact": "ghost.txt",
+                    "recorded_digest": "d" * 40,
+                }
+            ]
+        )
+        self.assertEqual(result["verdict"], "fail")
+        entry = result["discrepancy_entries"][0]
+        self.assertEqual(
+            entry["subject_identification"]["identification_form"], "not located"
+        )
+        self.assertTrue(entry["routes_tried"])
+
+    def test_required_record_from_the_wrong_source_fails(self):
+        result = self.run_auth(
+            required_records=[
+                {
+                    "record_kind": "roster",
+                    "name": "notes.txt",
+                    "source_kind": "packet supplied record",
+                }
+            ]
+        )
+        self.assertEqual(result["verdict"], "fail")
+        entry = result["discrepancy_entries"][-1]
+        self.assertEqual(
+            entry["discrepancy_form_name"],
+            "record did not come from the source the layout names",
+        )
+
+    def test_required_record_from_the_layout_source_passes(self):
+        result = self.run_auth(
+            required_records=[
+                {
+                    "record_kind": "roster",
+                    "name": "notes.txt",
+                    "source_kind": "platform sourced record",
+                }
+            ]
+        )
+        self.assertEqual(result["verdict"], "pass")
+
+    def test_self_citing_source_corroborates_nothing(self):
+        result = self.run_auth(
+            sources=[
+                {
+                    "name": "external summary artefact",
+                    "self_citing": True,
+                    "remaining_support": True,
+                }
+            ]
+        )
+        self.assertEqual(result["verdict"], "fail")
+        self.assertIn("external summary artefact", result["unchecked_elements"])
+        self.assertIn("corroborates nothing", " ".join(result["notes"]))
+        self.assertIn("never an authenticity source", " ".join(result["notes"]))
+
+    def test_transcription_strength_is_carried_for_packet_supplied_records(self):
+        result = self.run_auth(
+            links=[
+                {
+                    "link": "Link 1",
+                    "artefact": "notes.txt",
+                    "recorded_digest": canonical.git_blob_digest(
+                        MEMBERS["notes.txt"].encode("utf-8")
+                    ),
+                    "spawn": "spawn-alpha-001",
+                    "seat": "Seat Alpha",
+                    "source_kind": "packet supplied record",
+                }
+            ]
+        )
+        self.assertEqual(result["verdict"], "pass")
+        self.assertEqual(
+            result["strengths"]["Link 1"], "transcription consistency"
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
