@@ -19,7 +19,6 @@ from .canonical import (
     git_blob_digest,
     member_digest,
     pinning_citation_digest,
-    pinning_record,
     raw_digest,
     receipt_self_digest,
     record_digest,
@@ -29,6 +28,7 @@ from .canonical import (
     with_receipt_self_digest,
     with_run_statement_self_digest,
 )
+from .pinning import pinning_record
 from .calibration import (
     calibration_filed_text,
     calibration_passes,

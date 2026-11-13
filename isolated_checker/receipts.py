@@ -108,10 +108,25 @@ def intake_failure_record(
     return shapes.validate("SH-33", record, shapes.VOCABULARY["SH-33"])
 
 
-def receipt_filed_text(record):
-    """Render a custody receipt in its filed form, brief order."""
+def receipt_filed_text(record, member_names=None):
+    """Render a custody receipt in its filed form, brief order.
+
+    This renderer is the single owner of the custody receipt's
+    filed form: the record family path and the freeze shell path
+    file one text from this one renderer, so no second renderer
+    stands for the same receipt. The filed form opens with the
+    custody receipt heading and carries the brief section 5.3
+    fields in order. Member lines stand in one form: where the
+    caller supplies member names by digest, as the freeze result
+    carries them, each line is the member name, its digest, and
+    its byte size; a record rendered on its own carries each
+    member by digest and byte size, the fields the record itself
+    states.
+    """
+    names = member_names or {}
     members = "; ".join(
-        m["member_digest"] + " " + str(m["member_byte_size"])
+        (names[m["member_digest"]] + " " if m["member_digest"] in names else "")
+        + m["member_digest"] + " " + str(m["member_byte_size"])
         for m in record["members"]
     )
     sources = "; ".join(m["source_kind"] for m in record["members"])
@@ -124,7 +139,7 @@ def receipt_filed_text(record):
             + str(record["predecessor_receipt_digest"])
         )
     handing = record["handing_over_seat"]
-    return shapes.render_fields(
+    return "custody receipt\n" + shapes.render_fields(
         [
             ("build", record["build"]),
             ("stage", record["stage"]),

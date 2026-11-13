@@ -49,6 +49,7 @@ import time
 
 from . import canonical
 from . import freeze as freeze_core
+from . import pinning
 from . import receipts
 from .canonical import git_blob_digest
 
@@ -110,47 +111,6 @@ def _second_pass(members, invocation):
     return second
 
 
-def _receipt_filed_text(result):
-    """Render the issued receipt in its filed form, brief order.
-
-    The field list is the brief section 5.3 list, in order, as the
-    S-01 renderer states it; the members field names each member
-    with its digest and byte size, in receipt order.
-    """
-    record = result["receipt"]
-    names = {r["digest_git_blob_sha1"]: r["name"] for r in result["members"]}
-    members = "; ".join(
-        names.get(m["member_digest"], m["member_digest"])
-        + " " + m["member_digest"] + " " + str(m["member_byte_size"])
-        for m in record["members"]
-    )
-    sources = "; ".join(m["source_kind"] for m in record["members"])
-    if record["sequence_position"] == 1:
-        sequence = "first"
-    else:
-        sequence = (
-            "position " + str(record["sequence_position"])
-            + "; predecessor receipt digest "
-            + str(record["predecessor_receipt_digest"])
-        )
-    handing = record["handing_over_seat"]
-    filed = receipts.shapes.render_fields(
-        [
-            ("build", record["build"]),
-            ("stage", record["stage"]),
-            ("members", members),
-            ("member sources", sources),
-            ("frozen by seat", record["freezing_seat"]),
-            ("handed over by seat", handing if handing is not None else "absent"),
-            ("freeze time", record["freeze_time"]),
-            ("sequence element", sequence),
-            ("context record digest", record["context_record_digest"]),
-            ("receipt self digest", record["self_digest"]),
-        ]
-    )
-    return "custody receipt\n" + filed
-
-
 def _anchor_filed_text(result, citation_digest):
     """Render the anchor record entry, in its qualified form."""
     lines = [
@@ -179,9 +139,9 @@ def _freeze_reads(invocation, output_area):
     reading where the presented source states none.
     """
     scenario = invocation.get("scenario") or {}
-    pinning = scenario.get("pinning_record")
-    if pinning is None:
-        pinning = canonical.pinning_record(
+    presented_pin = scenario.get("pinning_record")
+    if presented_pin is None:
+        presented_pin = pinning.pinning_record(
             canonical.DEFAULT_ALGORITHM,
             canonical.CANONICAL_FORM,
             invocation.get("checker_version"),
@@ -193,7 +153,7 @@ def _freeze_reads(invocation, output_area):
         or _operator_gate_record_anchor_home(output_area)
     )
     return {
-        "pinning_record": pinning,
+        "pinning_record": presented_pin,
         "context_claim": scenario.get("context_claim"),
         "standing_rule_versions": scenario.get("standing_rule_versions"),
         "outside_standard_versions": scenario.get(
@@ -320,7 +280,14 @@ def run_intake_freeze(invocation, output_area):
         encoding="utf-8",
     )
     (out / "custody-receipt.txt").write_text(
-        _receipt_filed_text(result), encoding="utf-8"
+        receipts.receipt_filed_text(
+            result["receipt"],
+            {
+                r["digest_git_blob_sha1"]: r["name"]
+                for r in result["members"]
+            },
+        ),
+        encoding="utf-8",
     )
     # Anchor write last: the commit point of the freeze. An anchor
     # entry already standing for this receipt digest with the same

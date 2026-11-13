@@ -39,7 +39,7 @@ failure form. The context record is built with the standing rule
 and outside standard version lists exactly as read.
 """
 
-from . import canonical, receipts
+from . import canonical, pinning, receipts
 from .reading import ReadingCounter, read_member
 
 # The qualified form of the anchor duty, brief section 5.3, stated
@@ -200,7 +200,7 @@ def freeze_intake(
             "pinning record", handing_over_seat, freeze_time,
             "no pinning record was read for this freeze", [],
         )
-    pinning = canonical.pinning_record(
+    pin = pinning.pinning_record(
         pinning_record["digest_algorithm"],
         pinning_record["canonical_form"],
         pinning_record["checker_version"],
@@ -217,9 +217,9 @@ def freeze_intake(
             "canonical_form": context_claim["canonical_form"],
         }
     if (
-        pinning["checker_version"] != checker_version
-        or claim["digest_algorithm"] != pinning["digest_algorithm"]
-        or claim["canonical_form"] != pinning["canonical_form"]
+        pin["checker_version"] != checker_version
+        or claim["digest_algorithm"] != pin["digest_algorithm"]
+        or claim["canonical_form"] != pin["canonical_form"]
     ):
         return _failure(
             "context record claim", handing_over_seat, freeze_time,
@@ -270,7 +270,7 @@ def freeze_intake(
         "receipt": receipt,
         "receipt_digest": receipt_digest,
         "anchor_entry": anchor_entry,
-        "pinning_record": pinning,
+        "pinning_record": pin,
         "anchor_home": anchor_home,
         "counter": counter,
     }

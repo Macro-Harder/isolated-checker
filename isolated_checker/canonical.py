@@ -18,7 +18,6 @@ function here, exactly as MD-01 states.
 
 import hashlib
 
-from . import shapes
 from .shapes import ShapeError
 
 PRODUCT_NAME = "isolated-checker-canonical-form"
@@ -189,20 +188,6 @@ def calibration_citation_digest(record, algorithm=DEFAULT_ALGORITHM):
     omitted, because no self digest field stands in the record.
     """
     return record_digest("SH-22", record, algorithm)
-
-
-def pinning_record(
-    digest_algorithm, canonical_form, checker_version,
-    successor_ruling_reference=None,
-):
-    """Build a pinning record in the SH-44 form."""
-    record = {
-        "digest_algorithm": digest_algorithm,
-        "canonical_form": canonical_form,
-        "checker_version": checker_version,
-        "successor_ruling_reference": successor_ruling_reference,
-    }
-    return shapes.validate("SH-44", record, shapes.VOCABULARY["SH-44"])
 
 
 def pinning_citation_digest(record, algorithm=DEFAULT_ALGORITHM):

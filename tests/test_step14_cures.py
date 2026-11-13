@@ -336,5 +336,99 @@ class T1408Md02SeamTests(unittest.TestCase):
             shapes.validate("SH-07", {"anchored_receipt_digest": 1.5})
 
 
+class T1412PinningHomeAndReceiptRendererTests(unittest.TestCase):
+    """T14-12: one home for SH-44 construction, one receipt renderer."""
+
+    def test_pinning_record_is_built_in_its_md02_home_not_in_canonical(self):
+        from isolated_checker import canonical, pinning
+        import isolated_checker
+
+        self.assertFalse(hasattr(canonical, "pinning_record"))
+        record = pinning.pinning_record(
+            "SHA-256", "CFE-1", "checker-1.0.0"
+        )
+        self.assertEqual(
+            record,
+            {
+                "digest_algorithm": "SHA-256",
+                "canonical_form": "CFE-1",
+                "checker_version": "checker-1.0.0",
+                "successor_ruling_reference": None,
+            },
+        )
+        self.assertIs(isolated_checker.pinning_record, pinning.pinning_record)
+        # The digest duty stays in the canonical core, at MD-01.
+        self.assertEqual(
+            canonical.pinning_citation_digest(record),
+            canonical.record_digest("SH-44", record),
+        )
+
+    def test_the_shell_has_no_receipt_renderer_of_its_own(self):
+        from isolated_checker import intake
+
+        self.assertFalse(hasattr(intake, "_receipt_filed_text"))
+
+    def test_filed_receipt_text_is_the_one_renderers_text(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        out = pathlib.Path(tmp.name) / "out"
+        invocation = harness.base_invocation(out)
+        result = harness.run_intake_freeze(invocation, out)
+        self.assertIsNotNone(result)
+        filed = (out / "custody-receipt.txt").read_text(encoding="utf-8")
+        from isolated_checker import receipts
+
+        names = {"example-member.txt"}
+        self.assertTrue(filed.startswith("custody receipt\n"))
+        self.assertIn("example-member.txt", filed)
+        # The same renderer, given the record the core issued for
+        # the same inputs at the filed freeze time, produces the
+        # filed text exactly: one renderer, one form.
+        from isolated_checker import freeze
+
+        freeze_time = [
+            line.split(": ", 1)[1]
+            for line in filed.splitlines()
+            if line.startswith("freeze time:")
+        ][0]
+        core = freeze.freeze_intake(
+            [
+                {
+                    "name": "example-member.txt",
+                    "content": "Example packet member, labelled as an example.\n",
+                    "source_kind": "example packet",
+                }
+            ],
+            [
+                {
+                    "name": "example-member.txt",
+                    "content": "Example packet member, labelled as an example.\n",
+                    "source_kind": "example packet",
+                }
+            ],
+            build="isolated-checker-test-build",
+            stage="step-gate-1",
+            packet_form_version="packet-form-1",
+            checker_version="checker-1.0.0",
+            freeze_time=freeze_time,
+            pinning_record={
+                "digest_algorithm": "SHA-256",
+                "canonical_form": "CFE-1",
+                "checker_version": "checker-1.0.0",
+                "successor_ruling_reference": None,
+            },
+        )
+        self.assertEqual(core["status"], "frozen")
+        rendered = receipts.receipt_filed_text(
+            core["receipt"],
+            {
+                r["digest_git_blob_sha1"]: r["name"]
+                for r in core["members"]
+            },
+        )
+        self.assertEqual(filed, rendered)
+        self.assertEqual(names, {"example-member.txt"})
+
+
 if __name__ == "__main__":
     unittest.main()
