@@ -254,5 +254,87 @@ class T1405NoReceiptOverUnrecomputedDigestsTests(unittest.TestCase):
         self.assertEqual(digests, expected)
 
 
+class T1408Md02SeamTests(unittest.TestCase):
+    """T14-08: operation outputs take their CE-2A registered forms."""
+
+    def test_anchor_entry_stands_in_the_sh07_registered_form(self):
+        from isolated_checker import shapes
+
+        result = core_freeze()
+        self.assertEqual(result["status"], "frozen")
+        self.assertEqual(
+            result["anchor_entry"],
+            {"anchored_receipt_digest": result["receipt_digest"]},
+        )
+        self.assertEqual(
+            set(result["anchor_entry"]), set(shapes.VOCABULARY["SH-07"])
+        )
+        self.assertIs(
+            shapes.validate("SH-07", result["anchor_entry"]),
+            result["anchor_entry"],
+        )
+
+    def test_intake_failure_record_stands_in_the_sh33_registered_form(self):
+        from isolated_checker import freeze, shapes
+
+        members = [{"name": "material that cannot be frozen", "unreadable": True}]
+        result = freeze.freeze_intake(
+            members,
+            members,
+            build="cure-build",
+            stage="cure-stage",
+            packet_form_version="packet-form-1",
+            checker_version="checker-1.0.0",
+            freeze_time="2026-11-13T00:00:00Z",
+            pinning_record={
+                "digest_algorithm": "SHA-256",
+                "canonical_form": "CFE-1",
+                "checker_version": "checker-1.0.0",
+                "successor_ruling_reference": None,
+            },
+        )
+        self.assertEqual(result["status"], "intake failure")
+        record = result["failure_record"]
+        self.assertEqual(set(record), set(shapes.VOCABULARY["SH-33"]))
+        self.assertIs(shapes.validate("SH-33", record), record)
+        filed = freeze.intake_failure_filed_text(record)
+        self.assertIn("intake failure record", filed)
+        self.assertIn(record["failure_description"], filed)
+
+    def test_seam_rejects_a_key_in_no_ce2a_row_for_its_shape(self):
+        from isolated_checker import shapes
+        from isolated_checker.shapes import ShapeError
+
+        with self.assertRaises(ShapeError):
+            shapes.validate("SH-07", {"receipt_digest": "a" * 40})
+        with self.assertRaises(ShapeError):
+            shapes.validate(
+                "SH-07",
+                {"anchored_receipt_digest": "a" * 40, "anchor_strength": "x"},
+            )
+
+    def test_seam_rejects_a_record_missing_a_field_its_shape_states(self):
+        from isolated_checker import shapes
+        from isolated_checker.shapes import ShapeError
+
+        with self.assertRaises(ShapeError):
+            shapes.validate(
+                "SH-33",
+                {"material_identity_best_available": "material"},
+                shapes.VOCABULARY["SH-33"],
+            )
+        with self.assertRaises(ShapeError):
+            shapes.require(
+                "SH-07", {}, shapes.VOCABULARY["SH-07"]
+            )
+
+    def test_seam_rejects_a_value_of_the_wrong_node_kind(self):
+        from isolated_checker import shapes
+        from isolated_checker.shapes import ShapeError
+
+        with self.assertRaises(ShapeError):
+            shapes.validate("SH-07", {"anchored_receipt_digest": 1.5})
+
+
 if __name__ == "__main__":
     unittest.main()

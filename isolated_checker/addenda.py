@@ -40,11 +40,23 @@ def addendum(
         "correction_reason_filer_claim": correction_reason_filer_claim,
         "correcting_seat": correcting_seat,
     }
+    required = (
+        "original_digest",
+        "corrected_digest",
+        "correction_time",
+        "correction_reason_filer_claim",
+        "correcting_seat",
+    )
     if all(value is not None for value in second):
         record["old_digest"] = old_digest
         record["new_digest"] = new_digest
         record["successor_algorithm"] = successor_algorithm
-    return shapes.validate("SH-35", record)
+        required = required + (
+            "old_digest",
+            "new_digest",
+            "successor_algorithm",
+        )
+    return shapes.validate("SH-35", record, required)
 
 
 def addendum_filed_text(record):

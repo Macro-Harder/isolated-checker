@@ -20,7 +20,11 @@ def quarantine_record(report_digest, discrepancies_to_answer, failure_wording):
         "discrepancies_to_answer": list(discrepancies_to_answer),
         "failure_wording": failure_wording,
     }
-    return shapes.validate("SH-30", record)
+    return shapes.validate(
+        "SH-30",
+        record,
+        ("report_digest", "discrepancies_to_answer", "failure_wording"),
+    )
 
 
 def quarantine_filed_text(record):
@@ -47,7 +51,11 @@ def failure_record(report_digest, failure_wording, material_digest, material_kin
             "material_kind": material_kind,
         },
     }
-    return shapes.validate("SH-30", record)
+    return shapes.validate(
+        "SH-30",
+        record,
+        ("report_digest", "failure_wording", "failed_material_identification"),
+    )
 
 
 def failure_filed_text(record):

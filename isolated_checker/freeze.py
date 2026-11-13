@@ -261,11 +261,7 @@ def freeze_intake(
     )
     receipt = canonical.with_receipt_self_digest(receipt)
     receipt_digest = receipt["self_digest"]
-    anchor_entry = {
-        "receipt_digest": receipt_digest,
-        "anchor_strength": ANCHOR_QUALIFIED_FORM,
-        "custody_strength": "transcription strength",
-    }
+    anchor_entry = receipts.anchor_entry(receipt_digest)
     return {
         "status": "frozen",
         "members": ordered,
@@ -281,15 +277,17 @@ def freeze_intake(
 
 
 def _failure(material, handing_over_seat, freeze_time, failure, divergent):
-    """The intake failure result, record form at SH-33."""
+    """The intake failure result, record form at SH-33.
+
+    The failure record is built through the MD-02 record form at
+    receipts.intake_failure_record, in the CE-2A field names for
+    SH-33, never as a plain dict in unregistered keys.
+    """
     return {
         "status": "intake failure",
-        "failure_record": {
-            "material": material,
-            "handed_over_by_seat": handing_over_seat,
-            "time": freeze_time,
-            "failure": failure,
-        },
+        "failure_record": receipts.intake_failure_record(
+            material, handing_over_seat, freeze_time, failure
+        ),
         "divergent_members": divergent,
     }
 
@@ -302,9 +300,9 @@ def intake_failure_filed_text(record):
     """
     lines = [
         "intake failure record",
-        "material: " + str(record["material"]),
-        "handed over by seat: " + str(record["handed_over_by_seat"]),
-        "time: " + str(record["time"]),
-        "failure: " + str(record["failure"]),
+        "material: " + str(record["material_identity_best_available"]),
+        "handed over by seat: " + str(record["handing_over_seat"]),
+        "time: " + str(record["failure_time"]),
+        "failure: " + str(record["failure_description"]),
     ]
     return "\n".join(lines) + "\n"

@@ -299,12 +299,12 @@ def run_intake_freeze(invocation, output_area):
             shutil.rmtree(staged, ignore_errors=True)
             (out / "intake-failure-record.txt").write_text(
                 freeze_core.intake_failure_filed_text(
-                    {
-                        "material": "anchor entry standing with a different value",
-                        "handed_over_by_seat": freeze_core.HANDING_SEAT,
-                        "time": freeze_time,
-                        "failure": "a freeze that cannot complete",
-                    }
+                    receipts.intake_failure_record(
+                        "anchor entry standing with a different value",
+                        freeze_core.HANDING_SEAT,
+                        freeze_time,
+                        "a freeze that cannot complete",
+                    )
                 ),
                 encoding="utf-8",
             )

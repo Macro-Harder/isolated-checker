@@ -2,10 +2,11 @@
 
 Owns the field lists of the shapes slice S-01 delivers, in the field
 name vocabulary plan statement CE-2A fixes. A record is a plain dict
-in that vocabulary. Construction rejects a field a shape does not
-state, a duplicate cannot arise in a dict, and a value of the wrong
-node kind under CE-2 is rejected by the canonical module at encoding
-time. Every other module receives records only through the builders
+in that vocabulary. Construction through this seam rejects a field
+a shape does not state, a field name that stands in no row of the
+vocabulary, a record missing a field its shape states, and a value
+of the wrong node kind under CE-2; a duplicate cannot arise in a
+dict. Every other module receives records only through the builders
 in the record modules, which validate through this module, so a
 malformed record is stopped at this seam with the record type, the
 field, and the governing shape named in the error.
@@ -39,6 +40,15 @@ VOCABULARY = {
         "predecessor_receipt_digest",
         "context_record_digest",
         "self_digest",
+    ),
+    "SH-07": (
+        "anchored_receipt_digest",
+    ),
+    "SH-33": (
+        "material_identity_best_available",
+        "handing_over_seat",
+        "failure_time",
+        "failure_description",
     ),
     "SH-11": (
         "checker_version",
@@ -161,8 +171,40 @@ EVENT_FIELDS = (
 )
 
 
-def validate(shape, record):
-    """Return the record, or raise ShapeError naming shape and field."""
+def _check_node_kind(shape, name, value):
+    """Reject a value of the wrong node kind under CE-2.
+
+    CE-2 states six node kinds: record, list, text, count, truth,
+    and absent. A count is a non negative integer, and no other
+    Python kind stands for a node at this seam.
+    """
+    if value is None or isinstance(value, (bool, str, list, tuple, dict)):
+        return
+    if isinstance(value, int):
+        if value < 0:
+            raise ShapeError(
+                shape + " record field " + name + " carries a "
+                "negative count, which CE-2 states no node kind for"
+            )
+        return
+    raise ShapeError(
+        shape + " record field " + name + " carries a value of a "
+        "kind CE-2 does not state: " + type(value).__name__
+    )
+
+
+def validate(shape, record, require_fields=None):
+    """Return the record, or raise ShapeError naming shape and field.
+
+    The seam's stated rejections, at MD-02: a field the shape does
+    not state, or a field name in no CE-2A row for the shape; a
+    value of the wrong node kind under CE-2; and, where the
+    building form states its required fields through
+    require_fields, a field that form states standing missing,
+    through require. A shape row can carry more than one form, as
+    SH-30 and SH-35 do, and each builder states the required
+    fields of the form it builds.
+    """
     allowed = VOCABULARY[shape]
     for name in record:
         if name not in allowed:
@@ -170,6 +212,10 @@ def validate(shape, record):
                 shape + " record carries a field its shape does not "
                 "state: " + name
             )
+    if require_fields is not None:
+        require(shape, record, require_fields)
+    for name, value in record.items():
+        _check_node_kind(shape, name, value)
     return record
 
 

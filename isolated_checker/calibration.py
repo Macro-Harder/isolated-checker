@@ -93,7 +93,7 @@ def calibration_record(
         "calibration_time": calibration_time,
         "pinning_record_digest": pinning_record_digest,
     }
-    return shapes.validate("SH-22", record)
+    return shapes.validate("SH-22", record, shapes.VOCABULARY["SH-22"])
 
 
 def calibration_passes(record):

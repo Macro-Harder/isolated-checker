@@ -79,7 +79,7 @@ def version_entry(
         "declaration_state": declaration_state,
         "events": [_event(event) for event in events],
     }
-    return shapes.validate("SH-38-entry", record)
+    return shapes.validate("SH-38-entry", record, shapes.VOCABULARY["SH-38-entry"])
 
 
 def amendment_entry(corrected_entry_citation, corrected_entry):
@@ -103,7 +103,7 @@ def amendment_entry(corrected_entry_citation, corrected_entry):
             "events",
         )
     }))
-    return shapes.validate("SH-38-amendment", record)
+    return shapes.validate("SH-38-amendment", record, shapes.VOCABULARY["SH-38-amendment"])
 
 
 def is_amendment(record):

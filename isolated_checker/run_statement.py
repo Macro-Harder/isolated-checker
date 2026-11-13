@@ -35,7 +35,11 @@ def bound_values_record(bound_entries, bound_ruling_reference):
         "bound_entries": entries,
         "bound_ruling_reference": bound_ruling_reference,
     }
-    return shapes.validate("SH-29", record)
+    return shapes.validate(
+        "SH-29",
+        record,
+        ("bound_entries", "bound_ruling_reference"),
+    )
 
 
 def run_statement(
@@ -123,7 +127,7 @@ def run_statement(
         "report_digest": report_digest,
         "self_digest": self_digest,
     }
-    return shapes.validate("SH-11", record)
+    return shapes.validate("SH-11", record, shapes.VOCABULARY["SH-11"])
 
 
 def _bound_line(record):

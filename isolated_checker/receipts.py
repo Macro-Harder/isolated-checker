@@ -70,7 +70,42 @@ def custody_receipt(
         "context_record_digest": context_record_digest,
         "self_digest": self_digest,
     }
-    return shapes.validate("SH-06", record)
+    return shapes.validate("SH-06", record, shapes.VOCABULARY["SH-06"])
+
+
+def anchor_entry(anchored_receipt_digest):
+    """Build an anchor record entry in the SH-07 form.
+
+    The CE-2A row for SH-07 names anchored_receipt_digest alone.
+    The anchor entry value the freeze operation returns is this
+    record, built and required through the MD-02 seam, and no
+    other key stands in it.
+    """
+    record = {"anchored_receipt_digest": anchored_receipt_digest}
+    return shapes.validate("SH-07", record, shapes.VOCABULARY["SH-07"])
+
+
+def intake_failure_record(
+    material_identity_best_available,
+    handing_over_seat,
+    failure_time,
+    failure_description,
+):
+    """Build an intake failure record in the SH-33 form.
+
+    The record names the material by the best identity available,
+    the seat handing it over, the time, and the failure, in the
+    CE-2A field names for SH-33, built and required through the
+    MD-02 seam. It is filed outside the frozen set, is not a
+    report, issues no verdict, and takes no exit status.
+    """
+    record = {
+        "material_identity_best_available": material_identity_best_available,
+        "handing_over_seat": handing_over_seat,
+        "failure_time": failure_time,
+        "failure_description": failure_description,
+    }
+    return shapes.validate("SH-33", record, shapes.VOCABULARY["SH-33"])
 
 
 def receipt_filed_text(record):
@@ -147,7 +182,7 @@ def context_record(
             outside_standard_versions, shapes.STANDARD_VERSION_FIELDS, "SH-05"
         ),
     }
-    return shapes.validate("SH-05", record)
+    return shapes.validate("SH-05", record, shapes.VOCABULARY["SH-05"])
 
 
 def context_filed_text(record):

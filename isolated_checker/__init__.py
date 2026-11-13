@@ -56,9 +56,11 @@ from .quarantine import (
     quarantine_record,
 )
 from .receipts import (
+    anchor_entry,
     context_filed_text,
     context_record,
     custody_receipt,
+    intake_failure_record,
     member,
     receipt_filed_text,
 )
@@ -170,4 +172,6 @@ __all__ = [
     "custody_receipt",
     "member",
     "receipt_filed_text",
+    "anchor_entry",
+    "intake_failure_record",
 ]

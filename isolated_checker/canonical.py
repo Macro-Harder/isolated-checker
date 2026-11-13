@@ -202,7 +202,7 @@ def pinning_record(
         "checker_version": checker_version,
         "successor_ruling_reference": successor_ruling_reference,
     }
-    return shapes.validate("SH-44", record)
+    return shapes.validate("SH-44", record, shapes.VOCABULARY["SH-44"])
 
 
 def pinning_citation_digest(record, algorithm=DEFAULT_ALGORITHM):
