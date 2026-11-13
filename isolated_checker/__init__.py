@@ -108,9 +108,35 @@ from .reading import (
     read_members,
     treat_as_data,
 )
+from .checks import (
+    CHECKS,
+    classification_record,
+    classify_one_sided,
+    collision_twin_entries,
+    discrepancy_entry,
+    invocation_comparisons,
+    layout_record,
+    layout_source_for,
+    outside_source_reference,
+    read_frozen_members,
+    spawn_reference,
+    spawn_strength,
+)
 from .shapes import ShapeError
 
 __all__ = [
+    "CHECKS",
+    "classification_record",
+    "classify_one_sided",
+    "collision_twin_entries",
+    "discrepancy_entry",
+    "invocation_comparisons",
+    "layout_record",
+    "layout_source_for",
+    "outside_source_reference",
+    "read_frozen_members",
+    "spawn_reference",
+    "spawn_strength",
     "ANCHOR_QUALIFIED_FORM",
     "DISCOVERY_ROUTES",
     "HeldStore",

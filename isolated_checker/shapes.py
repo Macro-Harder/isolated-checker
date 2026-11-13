@@ -176,7 +176,39 @@ VOCABULARY = {
         "checker_version",
         "successor_ruling_reference",
     ),
+    "SH-03": (
+        "layout_digest",
+        "layout_version",
+        "artefact_entries",
+        "seat_set",
+        "record_kind_sources",
+        "publication_time",
+        "republication_entries",
+    ),
+    "SH-16": (
+        "classified_item_identification",
+        "classification_heading",
+        "pending_counterpart_record_reference",
+    ),
+    "SH-42-source": (
+        "source_kind",
+        "source_identity",
+    ),
+    "SH-42-spawn": (
+        "spawn_identity",
+        "performer_seat",
+        "roster_authorisation_record_reference",
+    ),
 }
+
+ARTEFACT_ENTRY_FIELDS = ("artefact_kind", "content_properties")
+RECORD_KIND_SOURCE_FIELDS = ("record_kind", "source_kind")
+REPUBLICATION_FIELDS = ("republication_time", "republished_version")
+SPAWN_REFERENCE_FIELDS = (
+    "spawn_identity",
+    "performer_seat",
+    "roster_authorisation_record_reference",
+)
 
 MEMBER_FIELDS = ("member_digest", "member_byte_size", "source_kind")
 SUBJECT_IDENTIFICATION_FIELDS = (
