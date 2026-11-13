@@ -109,6 +109,7 @@ from .reading import (
     treat_as_data,
 )
 from .authenticity import check_authenticity
+from .chain import check_chain
 from .checks import (
     CHECKS,
     classification_record,
@@ -127,6 +128,7 @@ from .shapes import ShapeError
 
 __all__ = [
     "check_authenticity",
+    "check_chain",
     "CHECKS",
     "classification_record",
     "classify_one_sided",

@@ -530,5 +530,176 @@ class AuthenticityTests(unittest.TestCase):
         )
 
 
+CHAIN_MEMBERS = {
+    "step-a-output.txt": "Shared material body.\n",
+    "step-b-input.txt": "Shared material body.\n",
+    "extra.txt": "An additional input, not shared material.\n",
+}
+
+
+class ChainTests(unittest.TestCase):
+    def run_chain(self, members=CHAIN_MEMBERS, **kwargs):
+        from isolated_checker import chain
+
+        return chain.check_chain(
+            [{"name": n, "content": c} for n, c in sorted(members.items())],
+            **kwargs,
+        )
+
+    def test_matching_shared_material_passes(self):
+        result = self.run_chain(
+            pairs=[
+                {
+                    "governing_element_reference": "step a to step b join",
+                    "left": "step-a-output.txt",
+                    "right": "step-b-input.txt",
+                }
+            ]
+        )
+        self.assertEqual(result["verdict"], "pass")
+        self.assertEqual(result["discrepancy_entries"], [])
+
+    def test_digest_mismatch_on_shared_material_fails_chain(self):
+        members = dict(CHAIN_MEMBERS)
+        members["step-b-input.txt"] = "Shared material body, altered.\n"
+        result = self.run_chain(
+            members=members,
+            pairs=[
+                {
+                    "governing_element_reference": "step a to step b join",
+                    "left": "step-a-output.txt",
+                    "right": "step-b-input.txt",
+                }
+            ],
+        )
+        self.assertEqual(result["verdict"], "fail")
+        entry = result["discrepancy_entries"][0]
+        self.assertEqual(entry["check"], "chain")
+        self.assertEqual(entry["discrepancy_form_name"], "shared material digest mismatch")
+
+    def test_additional_input_is_not_by_itself_a_chain_failure(self):
+        result = self.run_chain(
+            pairs=[
+                {
+                    "governing_element_reference": "step a to step b join",
+                    "left": "step-a-output.txt",
+                    "right": "step-b-input.txt",
+                }
+            ]
+        )
+        self.assertEqual(result["verdict"], "pass")
+        self.assertIn("extra.txt", result["additional_inputs"])
+
+    def test_presented_digests_on_members_are_never_trusted(self):
+        members = [
+            {
+                "name": "step-a-output.txt",
+                "content": "Shared material body.\n",
+                "digest_git_blob_sha1": "f" * 40,
+            },
+            {
+                "name": "step-b-input.txt",
+                "content": "Shared material body.\n",
+                "digest_git_blob_sha1": "e" * 40,
+            },
+        ]
+        from isolated_checker import chain
+
+        result = chain.check_chain(
+            members,
+            pairs=[
+                {
+                    "governing_element_reference": "join",
+                    "left": "step-a-output.txt",
+                    "right": "step-b-input.txt",
+                }
+            ],
+        )
+        self.assertEqual(result["verdict"], "pass")
+
+    def test_ledger_transition_matching_including_time_passes(self):
+        result = self.run_chain(
+            ledger_transitions=[
+                {
+                    "governing_element_reference": "ledger transition 1",
+                    "left": "step-a-output.txt",
+                    "right": "step-b-input.txt",
+                    "left_time": "2026-11-13T01:00:00Z",
+                    "right_time": "2026-11-13T01:00:00Z",
+                }
+            ]
+        )
+        self.assertEqual(result["verdict"], "pass")
+
+    def test_ledger_transition_time_mismatch_fails_chain(self):
+        result = self.run_chain(
+            ledger_transitions=[
+                {
+                    "governing_element_reference": "ledger transition 1",
+                    "left": "step-a-output.txt",
+                    "right": "step-b-input.txt",
+                    "left_time": "2026-11-13T01:00:00Z",
+                    "right_time": "2026-11-13T02:00:00Z",
+                }
+            ]
+        )
+        self.assertEqual(result["verdict"], "fail")
+        self.assertEqual(
+            result["discrepancy_entries"][0]["discrepancy_form_name"],
+            "ledger transition time mismatch",
+        )
+
+    def test_missing_side_of_a_join_is_not_located_and_fails(self):
+        result = self.run_chain(
+            pairs=[
+                {
+                    "governing_element_reference": "join",
+                    "left": "step-a-output.txt",
+                    "right": "ghost.txt",
+                }
+            ]
+        )
+        self.assertEqual(result["verdict"], "fail")
+        self.assertEqual(
+            result["discrepancy_entries"][0]["subject_identification"][
+                "identification_form"
+            ],
+            "not located",
+        )
+
+    def test_one_sided_material_is_classified_and_changes_no_outcome(self):
+        result = self.run_chain(
+            pairs=[
+                {
+                    "governing_element_reference": "join",
+                    "left": "step-a-output.txt",
+                    "right": "step-b-input.txt",
+                }
+            ],
+            one_sided_items=[
+                {
+                    "identification": "pending-append",
+                    "layout_requires_counterpart": True,
+                    "layout_provision": "layout section 2",
+                    "pending_record_reference": "gate record append 7",
+                },
+                {
+                    "identification": "orphan-item",
+                    "layout_requires_counterpart": True,
+                    "layout_provision": "layout section 2",
+                    "pending_record_reference": None,
+                },
+            ],
+            carried_unexplained_count=1,
+        )
+        self.assertEqual(result["verdict"], "pass")
+        headings = [
+            c["classification_heading"] for c in result["classifications"]
+        ]
+        self.assertEqual(headings, ["timing", "unexplained"])
+        self.assertEqual(result["unexplained_count"], 2)
+        self.assertIn("orphan-item", result["unchecked_elements"])
+
+
 if __name__ == "__main__":
     unittest.main()
