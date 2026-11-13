@@ -11,11 +11,15 @@ discovery outcome for a missing artefact: a discrepancy naming the
 artefact kind and the discovery routes tried. An artefact that is
 located but cannot be recomputed is reported as unidentifiable
 under the decided vocabulary: it does not count as an identified
-artefact, and the check that needed it takes FAIL with stage
-PARTIAL at exit status 1 where the remaining records support a
-determination and UNVERIFIABLE at exit status 2 where they support
-none. A truncated citation that cannot be recomputed does not
+artefact. A truncated citation that cannot be recomputed does not
 count as an identified artefact either, per Decision 7.
+
+This module, MD-16, composes no run determination and no exit
+status. What a check or a run takes from an unidentifiable
+artefact is composed by MD-06 under the outcome precedence and
+composition order at SH-17, and gated by MD-15, when the
+operation surface lands at slice S-07, on the classification and
+the discovery facts this module supplies.
 """
 
 from .canonical import git_blob_digest
@@ -82,11 +86,15 @@ def classify_discovery(case):
 
     case is a presented state mapping in the harness discovery
     form: a form value with its named parts and no member bytes.
-    The result names the S-02 outcome for the case, in the words
-    the brief states for it, so the run surface of later slices
-    composes statuses from it without rederiving the reading rule.
-    Determination support is read from the case where the brief
-    outcome turns on it, and from no other place.
+    The result names the presented case classification and the
+    discovery facts, in MD-16 terms, in the words the brief states
+    for the classification itself. It carries no run determination
+    and no exit status of its own: run determinations are composed
+    by MD-06 and exit statuses are gated by MD-15, when the
+    operation surface lands at slice S-07, on facts of this kind.
+    Whether the remaining records of a run support a determination
+    is a fact of that run, read by the composing modules from the
+    run's records, and no part of it is read or carried here.
     """
     form = case.get("form")
     if form == "renamed_artefact":
@@ -104,15 +112,12 @@ def classify_discovery(case):
             "routes_tried": list(case.get("routes_tried", ())),
         }
     if form == "unrecomputable_artefact":
-        supported = case.get("determination_support") == "supported"
         return {
             "outcome": "unidentifiable",
             "artefact_kind": case.get("artefact_kind"),
             "identified": False,
-            "determination": (
-                "FAIL with stage PARTIAL" if supported else "UNVERIFIABLE"
-            ),
-            "exit_status": 1 if supported else 2,
+            "located": True,
+            "recomputable": False,
         }
     if form in ("linked_member", "submodule_member"):
         return {
