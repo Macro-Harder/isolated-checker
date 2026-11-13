@@ -67,6 +67,12 @@ from .run_statement import (
     run_statement,
     run_statement_filed_text,
 )
+from .discovery import (
+    DISCOVERY_ROUTES,
+    can_recompute,
+    classify_discovery,
+    discover_artefact,
+)
 from .reading import (
     OWNED_FIELDS,
     ReadingCounter,
@@ -82,7 +88,11 @@ from .reading import (
 from .shapes import ShapeError
 
 __all__ = [
+    "DISCOVERY_ROUTES",
     "OWNED_FIELDS",
+    "can_recompute",
+    "classify_discovery",
+    "discover_artefact",
     "ReadingCounter",
     "ShapeError",
     "extract_link_fields",
