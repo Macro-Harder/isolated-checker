@@ -16,6 +16,7 @@ import unittest
 import isolated_checker as ic
 from isolated_checker import canonical, checks, receipts, seal
 from isolated_checker.reading import ReadingCounter
+from isolated_checker.shapes import ShapeError
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 PACKAGE = REPO_ROOT / "isolated_checker"
@@ -336,6 +337,125 @@ class T1417InvocationComparisonsTests(unittest.TestCase):
         self.assertEqual(
             entry["governing_element_reference"], seal.COMPARISON_BUILD_STAGE
         )
+
+
+class T1418SubjectlessReceiptTests(unittest.TestCase):
+    """T14-18: a receipt with no self digest takes the emission at 2."""
+
+    def assert_subjectless_emission(self, result):
+        self.assertEqual(result["status"], "broken seal")
+        self.assertEqual(result["outcome_word"], "custody gap")
+        self.assertEqual(result["exit_status"], 2)
+        self.assertFalse(result["determination_supported"])
+        self.assertFalse(result["receipt_recomputes"])
+        self.assertIsNone(result["receipt_digest"])
+        self.assertEqual(
+            result["failed_comparisons"], [seal.COMPARISON_RECEIPT_RECOMPUTATION]
+        )
+        report = result["report"]
+        self.assertIsNone(report["custody_receipt_digest"])
+        self.assertIsNone(report["authenticity_verdict"])
+        self.assertIsNone(report["chain_verdict"])
+        self.assertIsNone(report["completeness_verdict"])
+        self.assertEqual(report["discrepancy_list"], result["discrepancy_entries"])
+        self.assertEqual(len(result["discrepancy_entries"]), 1)
+        entry = result["discrepancy_entries"][0]
+        self.assertEqual(entry["entry_number"], 1)
+        self.assertEqual(entry["check"], "chain")
+        self.assertEqual(entry["discrepancy_category"], "custody gap")
+        self.assertIsNone(entry["defect_kind_code"])
+        self.assertEqual(
+            entry["governing_element_reference"],
+            seal.COMPARISON_RECEIPT_RECOMPUTATION,
+        )
+        self.assertEqual(
+            entry["root_cause_key"], "chain:receipt recomputation:custody gap"
+        )
+        self.assertEqual(
+            entry["subject_identification"],
+            {
+                "identification_form": "unidentifiable",
+                "digest": None,
+                "receipt_position": None,
+            },
+        )
+
+    def test_receipt_with_no_self_digest_key_takes_status_2(self):
+        receipt = build_receipt()
+        del receipt["self_digest"]
+        result = seal.check_seal(
+            receipt=receipt,
+            members=member_list(),
+            receipt_member_names=sorted(MEMBERS),
+        )
+        self.assert_subjectless_emission(result)
+
+    def test_empty_receipt_takes_status_2(self):
+        result = seal.check_seal(receipt={}, members=[])
+        self.assert_subjectless_emission(result)
+
+    def test_absent_valued_self_digest_takes_status_2(self):
+        receipt = dict(build_receipt(), self_digest=None)
+        result = seal.check_seal(
+            receipt=receipt,
+            members=member_list(),
+            receipt_member_names=sorted(MEMBERS),
+        )
+        self.assert_subjectless_emission(result)
+
+    def test_filed_text_renders_for_a_subjectless_receipt(self):
+        receipt = build_receipt()
+        del receipt["self_digest"]
+        result = seal.check_seal(receipt=receipt, members=member_list())
+        text = seal.seal_break_filed_text(result)
+        self.assertIn("receipt recomputation", text)
+        self.assertIn("exit status: 2", text)
+        self.assertIn("verdict: no verdict issued", text)
+
+    def test_subjectless_entry_stands_directly_in_its_form(self):
+        entry = seal.custody_gap_entry(
+            1, seal.COMPARISON_RECEIPT_RECOMPUTATION, None, None, None
+        )
+        self.assertEqual(
+            entry["subject_identification"]["identification_form"],
+            "unidentifiable",
+        )
+        self.assertEqual(
+            entry["root_cause_key"], "chain:receipt recomputation:custody gap"
+        )
+
+    def test_present_but_wrong_digest_keeps_its_pinned_behaviour(self):
+        receipt = dict(
+            build_receipt(), self_digest=canonical.raw_digest(b"forged")
+        )
+        result = run_seal(
+            receipt, anchor_entry=receipts.anchor_entry(receipt["self_digest"])
+        )
+        self.assertEqual(result["exit_status"], 2)
+        self.assertEqual(
+            result["failed_comparisons"], [seal.COMPARISON_RECEIPT_RECOMPUTATION]
+        )
+        entry = result["discrepancy_entries"][0]
+        self.assertEqual(
+            entry["subject_identification"]["identification_form"], "digest"
+        )
+        self.assertEqual(
+            entry["subject_identification"]["digest"], receipt["self_digest"]
+        )
+        self.assertEqual(
+            result["report"]["custody_receipt_digest"], receipt["self_digest"]
+        )
+
+    def test_subjectless_guard_stands_for_the_other_comparisons(self):
+        for comparison in (
+            seal.COMPARISON_MEMBER_DIGEST,
+            seal.COMPARISON_MEMBER_PRESENCE,
+            seal.COMPARISON_ANCHOR,
+            seal.COMPARISON_BUILD_STAGE,
+            seal.COMPARISON_SEQUENCE,
+        ):
+            with self.assertRaises(ShapeError):
+                seal.custody_gap_entry(1, comparison, None, None, None)
 
 
 if __name__ == "__main__":

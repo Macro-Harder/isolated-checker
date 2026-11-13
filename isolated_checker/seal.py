@@ -31,7 +31,13 @@ recheck, its recheck report in verdict run form, carrying the
 custody gap as a chain discrepancy in its own right, the receipt
 digest, and the seal comparison that failed, at exit status 1
 where the receipt comparison supports the determination and at
-exit status 2 where it supports none. The report record stands
+exit status 2 where it supports none. A receipt carrying no self
+digest takes that same emission at exit status 2: its
+recomputation entry stands in the unidentifiable subject form,
+the one comparison whose subject the absent digest cannot give,
+and the report's custody receipt digest field stands absent
+valued in the form the record already uses for its verdict
+fields. The report record stands
 in the SH-13 form and each custody gap entry in the SH-14 form,
 both built through the MD-02 seam with their required fields
 stated per form, in the pattern the cure wave established across
@@ -132,14 +138,35 @@ def custody_gap_entry(
     in it. A subject is identified by digest where a digest
     exists for it, with its receipt position where it is a member;
     a subject with a name and no digest stands not located.
+
+    One case names no subject element, as Step 14 finding T14-18
+    cures it: the receipt recomputation failure where the receipt
+    carries no self digest, neither as a key nor as a value. The
+    subject of that failure is the receipt itself; the receipt
+    stands located, as the record the run was handed, but no
+    citation for it can be recomputed, because the absent digest
+    is the failure. Its entry therefore stands in the
+    unidentifiable identification form Q2 states for exactly that
+    case, with the digest and the receipt position absent valued,
+    and the entry is identified by its governing element
+    reference, which stands in the root cause key as it does on
+    every entry. Every other comparison keeps the guard: an entry
+    naming no subject element for any other comparison is no
+    entry in the SH-14 form.
     """
     if subject_digest is None and subject_name is None:
-        raise ShapeError(
-            "SH-14 custody gap entry names no subject element: "
-            "a subject digest or a subject name stands required"
-        )
+        if governing_element_reference != COMPARISON_RECEIPT_RECOMPUTATION:
+            raise ShapeError(
+                "SH-14 custody gap entry names no subject element: "
+                "a subject digest or a subject name stands required"
+            )
+        identification_form = "unidentifiable"
+    elif subject_digest:
+        identification_form = "digest"
+    else:
+        identification_form = "not located"
     identification = {
-        "identification_form": "digest" if subject_digest else "not located",
+        "identification_form": identification_form,
         "digest": subject_digest,
         "receipt_position": receipt_position,
     }
