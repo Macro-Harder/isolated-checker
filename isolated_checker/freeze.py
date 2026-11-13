@@ -27,6 +27,16 @@ member bytes are read through the data only reading layer of
 slice S-02. Counting hooks for the resource bounds of slice S-13
 are landed with this slice reading path, as statement P1-S13-3
 requires, through the reading counter the caller may pass in.
+
+The reads CT-01 names stand as inputs of this module, not as
+values it makes: the pinning record at SH-44, the standing rules
+and outside standards versions source, and the anchor home naming
+the gate record states. The context record claims are compared
+against the pinning record as SH-44 states, claim against pin: a
+claim that disagrees with the pin, or a freeze called with no
+pinning record read, issues no receipt and takes the intake
+failure form. The context record is built with the standing rule
+and outside standard version lists exactly as read.
 """
 
 from . import canonical, receipts
@@ -114,6 +124,11 @@ def freeze_intake(
     sequence_position=1,
     predecessor_receipt_digest=None,
     counter=None,
+    pinning_record=None,
+    standing_rule_versions=None,
+    outside_standard_versions=None,
+    anchor_home=None,
+    context_claim=None,
 ):
     """Run freeze intake over two full passes of handed in material.
 
@@ -126,6 +141,16 @@ def freeze_intake(
     a retry of an uncommitted attempt reuses staged copies only
     after verifying each one digest by digest, and this core is
     rerun for the attempt, issuing the one receipt for it.
+
+    pinning_record is the pinning record at SH-44 as read, in its
+    field form; standing_rule_versions and
+    outside_standard_versions are the version lists as read from
+    the standing versions source; anchor_home is the anchor home
+    naming the gate record states; context_claim, where supplied,
+    presents the digest algorithm and canonical form the set
+    claims, and where it is not supplied the claim is the pair
+    bound to the checker version. The claim is compared against
+    the pin before any receipt issues, as SH-44 states.
     """
     if counter is None:
         counter = ReadingCounter()
@@ -162,20 +187,54 @@ def freeze_intake(
             ", ".join(divergent), handing_over_seat, freeze_time,
             "the two full set passes of the freeze differ", divergent,
         )
-    # Equality of the two passes: the receipt may issue. Members
-    # stand in the receipt in receipt order, by member name.
-    ordered = sorted(first, key=lambda reading: reading["name"])
+    # Equality of the two passes stands, and the pin comparison
+    # of SH-44 stands next, before any receipt issues: the
+    # context record claim is compared against the pinning record
+    # as read, never against a record minted here.
+    if pinning_record is None:
+        return _failure(
+            "pinning record", handing_over_seat, freeze_time,
+            "no pinning record was read for this freeze", [],
+        )
     pinning = canonical.pinning_record(
-        canonical.DEFAULT_ALGORITHM, canonical.CANONICAL_FORM, checker_version
+        pinning_record["digest_algorithm"],
+        pinning_record["canonical_form"],
+        pinning_record["checker_version"],
+        pinning_record.get("successor_ruling_reference"),
     )
+    if context_claim is None:
+        claim = {
+            "digest_algorithm": canonical.DEFAULT_ALGORITHM,
+            "canonical_form": canonical.CANONICAL_FORM,
+        }
+    else:
+        claim = {
+            "digest_algorithm": context_claim["digest_algorithm"],
+            "canonical_form": context_claim["canonical_form"],
+        }
+    if (
+        pinning["checker_version"] != checker_version
+        or claim["digest_algorithm"] != pinning["digest_algorithm"]
+        or claim["canonical_form"] != pinning["canonical_form"]
+    ):
+        return _failure(
+            "context record claim", handing_over_seat, freeze_time,
+            "the context record claim does not match the pinning record",
+            [],
+        )
+    # The receipt may issue. Members stand in the receipt in
+    # receipt order, by member name. The context record carries
+    # the claimed pair, now compared, and the version lists
+    # exactly as read.
+    ordered = sorted(first, key=lambda reading: reading["name"])
     context = receipts.context_record(
         build,
         stage,
         packet_form_version,
-        pinning["digest_algorithm"],
-        pinning["canonical_form"],
-        [],
-        [],
+        claim["digest_algorithm"],
+        claim["canonical_form"],
+        list(standing_rule_versions) if standing_rule_versions else [],
+        list(outside_standard_versions) if outside_standard_versions else [],
     )
     context_digest = canonical.record_digest("SH-05", context)
     receipt = receipts.custody_receipt(
@@ -211,6 +270,8 @@ def freeze_intake(
         "receipt": receipt,
         "receipt_digest": receipt_digest,
         "anchor_entry": anchor_entry,
+        "pinning_record": pinning,
+        "anchor_home": anchor_home,
         "counter": counter,
     }
 

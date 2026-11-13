@@ -47,6 +47,7 @@ import pathlib
 import shutil
 import time
 
+from . import canonical
 from . import freeze as freeze_core
 from . import receipts
 from .canonical import git_blob_digest
@@ -163,6 +164,45 @@ def _anchor_filed_text(result, citation_digest):
     return "\n".join(lines) + "\n"
 
 
+def _freeze_reads(invocation, output_area):
+    """Present the CT-01 reads of a freeze, as facts for the core.
+
+    Where the harness presents these inputs through its scenario
+    convention, they are consumed as presented facts in that form:
+    pinning_record, context_claim, standing_rule_versions,
+    outside_standard_versions, and the gate record's anchor home
+    naming under gate_record or anchor_home. Where no pinning
+    record is presented, the standing pinning record for the
+    invoked checker version stands as the read: the pair bound to
+    that version at CE-1, built through the SH-44 record form.
+    Version lists stand exactly as presented, and as an empty
+    reading where the presented source states none.
+    """
+    scenario = invocation.get("scenario") or {}
+    pinning = scenario.get("pinning_record")
+    if pinning is None:
+        pinning = canonical.pinning_record(
+            canonical.DEFAULT_ALGORITHM,
+            canonical.CANONICAL_FORM,
+            invocation.get("checker_version"),
+        )
+    gate = scenario.get("gate_record") or {}
+    anchor_home = (
+        scenario.get("anchor_home")
+        or gate.get("anchor_home")
+        or _operator_gate_record_anchor_home(output_area)
+    )
+    return {
+        "pinning_record": pinning,
+        "context_claim": scenario.get("context_claim"),
+        "standing_rule_versions": scenario.get("standing_rule_versions"),
+        "outside_standard_versions": scenario.get(
+            "outside_standard_versions"
+        ),
+        "anchor_home": anchor_home,
+    }
+
+
 def _operator_gate_record_anchor_home(output_area):
     """Read the anchor home naming from an operator filed gate record.
 
@@ -201,11 +241,11 @@ def run_intake_freeze(invocation, output_area):
     """
     out = pathlib.Path(output_area)
     out.mkdir(parents=True, exist_ok=True)
-    # CT-01 read: the gate record naming the anchor home, where an
-    # operator filed gate record stands in the output area. Read
-    # only; the record and its intake order field are the
-    # operator's, at SH-08 and SH-40.
-    _operator_gate_record_anchor_home(out)
+    # CT-01 reads for this freeze, the gate record naming the
+    # anchor home among them, presented to the core as reads.
+    # The gate record is read only; the record and its intake
+    # order field are the operator's, at SH-08 and SH-40.
+    reads = _freeze_reads(invocation, out)
     freeze_time = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     members = _presented_members(invocation)
     second = _second_pass(members, invocation)
@@ -235,6 +275,11 @@ def run_intake_freeze(invocation, output_area):
         packet_form_version=invocation.get("packet_form_version"),
         checker_version=invocation.get("checker_version"),
         freeze_time=freeze_time,
+        pinning_record=reads["pinning_record"],
+        standing_rule_versions=reads["standing_rule_versions"],
+        outside_standard_versions=reads["outside_standard_versions"],
+        anchor_home=reads["anchor_home"],
+        context_claim=reads["context_claim"],
     )
     if result["status"] != "frozen":
         shutil.rmtree(staged, ignore_errors=True)
