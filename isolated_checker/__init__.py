@@ -73,6 +73,12 @@ from .freeze import (
     intake_failure_filed_text,
 )
 from .intake import run_intake_freeze
+from .store import (
+    PRODUCTION_FAILURE_FORM,
+    HeldStore,
+    produce_held_set,
+    produced_set_filed_text,
+)
 from .discovery import (
     DISCOVERY_ROUTES,
     can_recompute,
@@ -96,8 +102,12 @@ from .shapes import ShapeError
 __all__ = [
     "ANCHOR_QUALIFIED_FORM",
     "DISCOVERY_ROUTES",
+    "HeldStore",
+    "PRODUCTION_FAILURE_FORM",
     "freeze_intake",
     "intake_failure_filed_text",
+    "produce_held_set",
+    "produced_set_filed_text",
     "run_intake_freeze",
     "OWNED_FIELDS",
     "can_recompute",
