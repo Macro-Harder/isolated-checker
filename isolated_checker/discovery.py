@@ -143,3 +143,160 @@ def classify_discovery(case):
             "directs_nothing": True,
         }
     return {"outcome": "unknown discovery form", "form": form}
+
+
+# ------------------------------------------------ MD-16 resolution duty
+#
+# The artefact kind to member resolution duty, assigned to this
+# module by Plan Supplement 7 Part 2 section S7P2-2. It takes the
+# SH-03 layout named at invocation under IF-LAY and the frozen set
+# members in receipt order, resolves each layout artefact entry to
+# the member its kind requires by the discovery routes above in
+# their stated order, subject to the recompute test, and returns
+# the denominator in the resolved element form completeness takes.
+# It performs no completeness check, returns no verdict, no
+# discrepancy entry and no counted determination, invents no member
+# for a kind it cannot locate, and composes no run determination
+# and no exit status: those belong to MD-05, MD-06 and MD-15.
+
+
+def _member_name(member):
+    if isinstance(member, dict):
+        return member.get("name")
+    return None
+
+
+def _member_text(member):
+    if isinstance(member, dict):
+        content = member.get("content", member.get("text", ""))
+    else:
+        content = ""
+    if isinstance(content, bytes):
+        return content.decode("utf-8", errors="replace")
+    return str(content)
+
+
+def _kind_slugs(kind):
+    text = str(kind).lower()
+    return {
+        text,
+        text.replace(" ", "-"),
+        text.replace(" ", "_"),
+        text.replace(" ", ""),
+    }
+
+
+def _locate_member(entry, members):
+    """Locate one entry's member by the routes, in stated order."""
+    kind = entry.get("artefact_kind", entry.get("kind"))
+    slugs = _kind_slugs(kind)
+    # Route 1, filename: a member named for the kind, exactly, or by
+    # a file stem naming the kind in slug form.
+    for member in members:
+        name = _member_name(member)
+        if name is None:
+            continue
+        stem = name.rsplit(".", 1)[0].lower() if "." in name else name.lower()
+        if name == kind or name.lower() in slugs or stem in slugs:
+            return member, "filename"
+    # Route 2, content signature: the signature the entry states, or
+    # the kind itself, standing in the member's content.
+    signature = entry.get("content_signature") or kind
+    if signature:
+        for member in members:
+            if str(signature) in _member_text(member):
+                return member, "content signature"
+    # Route 3, ledger or step record citation: a citation the entry
+    # states standing among the citations that name the member.
+    citations = list(entry.get("citations", ()))
+    if entry.get("citation"):
+        citations.append(entry["citation"])
+    for citation in citations:
+        for member in members:
+            cited_by = member.get("cited_by", ()) if isinstance(member, dict) else ()
+            if citation in cited_by:
+                route = (
+                    "ledger citation"
+                    if str(citation).startswith("ledger")
+                    else "step record citation"
+                )
+                return member, route
+    return None, None
+
+
+def resolve_required_elements(
+    layout,
+    members,
+    receipt_order_names=None,
+    standings=None,
+):
+    """Resolve a layout's artefact entries to frozen set members.
+
+    layout is the SH-03 layout record named at invocation; members
+    are the frozen set members as presented, supplied through the
+    MD-10 supply side, in receipt order where receipt_order_names
+    names that order. standings, where supplied, parallels the
+    layout entries and carries each entry's per element standings
+    (a stated none standing, and for a truncated artefact the
+    missing sections with their disposition) into the product
+    unchanged; this duty adjudicates none of it.
+
+    Returns one resolved element per artefact entry, in layout
+    entry order, in the form completeness takes as its
+    required_elements: the member it requires under name (the
+    located member's name, or the kind itself where no member is
+    located), its governing element reference (the layout artefact
+    entry it arises under), the artefact content properties the
+    layout states for its kind, any standing carried unchanged, and
+    the located member and route where one stands. A located member
+    that does not recompute stands unlocated, marked unidentifiable.
+    """
+    if layout is None:
+        return []
+    entries = layout.get("artefact_entries", ())
+    ordered = list(members or ())
+    if receipt_order_names:
+        rank = {name: index for index, name in enumerate(receipt_order_names)}
+        ordered.sort(
+            key=lambda member: rank.get(_member_name(member), len(rank))
+        )
+    resolved = []
+    for index, entry in enumerate(entries):
+        kind = entry.get("artefact_kind", entry.get("kind"))
+        member, route = _locate_member(entry, ordered)
+        unidentifiable = False
+        located_name = None
+        if member is not None:
+            has_digest = isinstance(member, dict) and (
+                member.get("digest_git_blob_sha1")
+                or member.get("recorded_digest")
+            )
+            if has_digest and not can_recompute(member):
+                unidentifiable = True
+                member, route = None, None
+            else:
+                located_name = _member_name(member)
+        element = {
+            "name": located_name if located_name is not None else kind,
+            "governing_element_reference": "layout artefact " + str(kind),
+            "artefact_kind": kind,
+            "content_properties": list(entry.get("content_properties", ())),
+            "located_member": located_name,
+            "route": route,
+            "unidentifiable": unidentifiable,
+        }
+        standing = None
+        if standings is not None and index < len(standings):
+            standing = standings[index]
+        if standing is None and isinstance(entry, dict):
+            standing = {
+                name: entry[name]
+                for name in ("stated_none", "missing_sections", "disposition")
+                if name in entry
+            } or None
+        if standing:
+            for name in ("stated_none", "missing_sections", "disposition"):
+                if name in standing:
+                    element[name] = standing[name]
+        resolved.append(element)
+    return resolved

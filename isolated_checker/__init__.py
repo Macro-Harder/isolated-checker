@@ -133,9 +133,17 @@ from .checks import (
     spawn_strength,
 )
 from .checks_runner import run_all_checks
+from .discovery import resolve_required_elements
+from .gating import gating_determination
+from .operations import run_invocation
+from .outcome import compose_outcome
 from .shapes import ShapeError
 
 __all__ = [
+    "run_invocation",
+    "resolve_required_elements",
+    "gating_determination",
+    "compose_outcome",
     "addendum_handling_filed_text",
     "filer_test_results",
     "follow_addendum_chain",
