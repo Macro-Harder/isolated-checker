@@ -318,7 +318,7 @@ def _entry_line(number, entry):
     name = None
     if isinstance(subject, dict):
         name = subject.get("digest")
-    return (
+    line = (
         "discrepancy "
         + str(number)
         + ": "
@@ -329,6 +329,11 @@ def _entry_line(number, entry):
         + str(entry.get("governing_element_reference"))
         + ("; subject " + str(name) if name else "")
     )
+    if entry.get("routes_tried"):
+        line += "; routes tried: " + ", ".join(
+            str(route) for route in entry["routes_tried"]
+        )
+    return line
 
 
 def _report_text(invocation, snap, outcome, check_results, entries, unchecked, recorded_gaps, counter, extra_lines=()):
@@ -931,7 +936,9 @@ def _run_over_presented_states(invocation, output_area, scenario, snap, counter,
             "invocation comparison failed: "
             + ", ".join(sorted(comparisons))
             + "\ncustody gap: an invocation to record comparison does "
-            "not match the invocation\nverdict: no verdict issued\n"
+            "not match the invocation\ndetermination: "
+            + ("FAIL with stage PARTIAL" if status == 1 else "UNVERIFIABLE")
+            + "\nverdict: no verdict issued\n"
             "exit status: " + str(status) + "\n"
         )
         _write(output_area, "report.txt", text)
@@ -987,9 +994,10 @@ def _run_over_presented_states(invocation, output_area, scenario, snap, counter,
                     name,
                     unchecked_elements=[str(facts.get("artefact_kind"))],
                     cannot_run_reason=(
-                        "an artefact is unidentifiable: located but "
-                        "not recomputable, it does not count as an "
-                        "identified artefact"
+                        "the "
+                        + str(facts.get("artefact_kind"))
+                        + " artefact is unidentifiable: located but "
+                        "not recomputable, and not counted as identified"
                     ),
                     determination_supported=case_support,
                 )
