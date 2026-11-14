@@ -8,15 +8,7 @@ A build closes its stages at gates, and a gate closes on evidence: records, link
 
 The audience is the gate boards and operators of a build: the operator who freezes an intake and runs the checker in the gate sequence, and the board that reads the discrepancy report and the run statement beside it and decides whether the stage closes. Every report names its unchecked elements, carries its limits with it, and cites the custody receipt and the run statement as one pair, so the board can see exactly what a verdict covers and what it does not.
 
-## What stands in this repo
-
-The checker is a small offline tool written in Python with the standard library only. It lives in the `isolated_checker` package. The test suite that pins its behaviour lives in `tests/`, beside the code it tests, and runs with one command from the repo root:
-
-```sh
-python3 -m unittest discover -s tests
-```
-
-The build is still in progress. The record forms, the data only reading layer, and freeze intake with custody receipt issue have landed; the remaining checks, run operations, and report forms land slice by slice, each against tests written before it.
+The checker is a small offline tool written in Python with the standard library only. It lives in the `isolated_checker` package.
 
 ## What the product will not do
 
